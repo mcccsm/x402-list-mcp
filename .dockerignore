@@ -1,0 +1,10 @@
+node_modules
+dist
+.git
+*.md
+!SKILL.md
+!README.md
+smoke-test.mjs
+.env
+.env.*
+BUILD-SPEC.md

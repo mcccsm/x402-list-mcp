@@ -1,0 +1,40 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "com.x402-list/x402-list-mcp",
+  "description": "Read-only MCP server for the x402-list directory: discover x402 services and facilitator volume.",
+  "version": "0.1.1",
+  "websiteUrl": "https://x402-list.com",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "x402-list-mcp",
+      "version": "0.1.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "X402_LIST_BASE_URL",
+          "description": "API base URL. The /api/v1 prefix is appended automatically.",
+          "isRequired": false,
+          "format": "string",
+          "default": "https://x402-list.com"
+        },
+        {
+          "name": "X402_LIST_TIMEOUT_MS",
+          "description": "Per-request timeout in milliseconds.",
+          "isRequired": false,
+          "format": "number",
+          "default": "15000"
+        }
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.x402-list.com/mcp"
+    }
+  ]
+}

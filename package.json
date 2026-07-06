@@ -1,0 +1,51 @@
+{
+  "name": "x402-list-mcp",
+  "version": "0.1.1",
+  "mcpName": "com.x402-list/x402-list-mcp",
+  "description": "MCP server for x402-list: discover x402 payment services and on-chain-verified facilitator settlement volume. Read-only wrapper over the public x402-list API.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "bin": {
+    "x402-list-mcp": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "SKILL.md",
+    "README.md"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "x402",
+    "payments",
+    "stablecoin",
+    "usdc",
+    "base",
+    "facilitator",
+    "ai-agents"
+  ],
+  "homepage": "https://x402-list.com",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node -e \"import('node:fs').then(fs=>fs.chmodSync('dist/index.js',0o755))\"",
+    "start": "node dist/index.js",
+    "start:http": "MCP_HTTP_PORT=${PORT:-3000} node dist/index.js --http",
+    "dev": "node --experimental-strip-types src/index.ts",
+    "smoke": "node smoke-test.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "20.14.10",
+    "typescript": "5.6.3"
+  }
+}
