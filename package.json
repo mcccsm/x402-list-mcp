@@ -32,6 +32,10 @@
     "ai-agents"
   ],
   "homepage": "https://x402-list.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcccsm/x402-list-mcp.git"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json && node -e \"import('node:fs').then(fs=>fs.chmodSync('dist/index.js',0o755))\"",
     "start": "node dist/index.js",

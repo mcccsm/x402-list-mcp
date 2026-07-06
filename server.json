@@ -4,6 +4,10 @@
   "description": "Read-only MCP server for the x402-list directory: discover x402 services and facilitator volume.",
   "version": "0.1.1",
   "websiteUrl": "https://x402-list.com",
+  "repository": {
+    "url": "https://github.com/mcccsm/x402-list-mcp",
+    "source": "github"
+  },
   "packages": [
     {
       "registryType": "npm",
