@@ -46,7 +46,7 @@ Hosted endpoint: `https://mcp.x402-list.com/mcp`. Health probe: `GET /healthz` r
 | --- | --- |
 | `search_x402_services` | Search and filter the directory by query, category, network, status; sort by newest/uptime/cheapest/endpoints. |
 | `get_service` | Full detail for one service by slug: endpoints, per-endpoint USD pricing, uptime windows, networks, settlement asset. |
-| `find_best_service` | Ranked recommendation for a need. Ranks by reliability and price (status, verified, uptime, response time, USD price), NOT by settlement volume. |
+| `find_best_service` | Ranked recommendation for a need. Ranks mostly by reliability, x402 compliance and price (status, verified, uptime, response time, USD price), with a small (~10%) weight on per-service on-chain traction; shared-payout and unmeasured-network services stay neutral. |
 | `check_health` | Live status, directory-wide or per service (uptime snapshots, consecutive failures). |
 | `get_facilitator_volumes` | Per-facilitator on-chain-verified settlement volume (24h/7d/30d/all) in USD, tx counts, and an on-chain vs listed flag. |
 
@@ -56,7 +56,7 @@ All monetary values are decimal US dollars and are passed through verbatim. Ther
 
 ## Honesty note
 
-Settlement volume is tracked **per facilitator only**, never per service. `find_best_service` does not rank by volume and never implies a per-service revenue figure. To ask "which facilitators have real on-chain volume", use `get_facilitator_volumes` and read the `verification` flag.
+Two different on-chain volume signals; do not conflate them. **Facilitator volume** (`get_facilitator_volumes`) is the ecosystem headline, aggregated per facilitator. **Per-service traction** (the `traction` block on each service, weighed at ~10% inside `find_best_service`) is settlement measured over a service's own payTo via recognized settlers - a deliberate **conservative undercount**, not an estimate: unattributed settlements are left out, never scaled up. A service whose payTo is shared across services (operator-level volume, `shared_payout: true`) or that sits on a network not yet measured carries no per-service figure and stays neutral in the ranking; never read shared or unmeasured volume as one service's revenue. To ask "which facilitators have real on-chain volume", use `get_facilitator_volumes` and read the `verification` flag.
 
 ## Source
 

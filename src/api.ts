@@ -10,7 +10,7 @@ const BASE = (process.env.X402_LIST_BASE_URL ?? "https://x402-list.com").replace
 const PREFIX = "/api/v1";
 const DEFAULT_TIMEOUT_MS = Number(process.env.X402_LIST_TIMEOUT_MS ?? 15000);
 // version: keep in sync with package.json / server.json / SERVER_INFO in server.ts.
-const USER_AGENT = "x402-list-mcp/0.1.1 (+https://x402-list.com)";
+const USER_AGENT = "x402-list-mcp/0.2.0 (+https://x402-list.com)";
 
 export interface ApiEnvelope<T> {
   data: T;
@@ -73,6 +73,136 @@ export async function apiGet<T>(
 
 // ---- Typed response interfaces (mirror the API verbatim) ----
 
+// Filone 2 assessment shapes. Declared here BY HAND (the MCP package imports nothing
+// from the root src/lib): these mirror src/lib/assessment/serialize.ts. Fields flagged
+// {value, confidence, source:'ai'} are AI-derived (family 10) and never override a
+// measured value; 'unknown'/null are honest, not zero.
+
+/** An AI-derived (family 10) field with its own provenance + confidence. */
+export interface AiMarkedField<T = string> {
+  value: T | "unknown";
+  confidence: number; // 0..1
+  source: "ai";
+}
+
+/** Compact assessment summary carried on each list item (backs ranking). */
+export interface AssessmentSummary {
+  compliance_grade: "A" | "B" | "C" | "D" | "F" | "unknown" | null;
+  compliance_passed: number | null;
+  compliance_total: number | null;
+  reliability_uptime_30d: number | null; // 0-100
+  response_p95_ms: number | null;
+  price_usd: number | null; // decimal USD (ENTRY / min price)
+  category_percentile: number | null; // 0-100 within its category, ranked on the min price (lower = cheaper)
+  price_stability: number | null; // 0-1, 1 = price never moved
+  // F2 price-range (additive; null on rows stored before the field set existed).
+  price_max_usd: number | null; // decimal USD (highest tier); == price_usd when flat
+  category_percentile_max: number | null; // 0-100, ranked on the max price among every service's max in the category
+  endpoint_count: number | null; // count of active priced endpoints
+  distinct_price_count: number | null; // count of distinct current prices (1 = flat, >1 = tiered)
+  risk_level: "clean" | "warning" | "danger" | null;
+  // AI-derived (family 10): carry the {value,confidence,source:'ai'} provenance so a
+  // ranker can tell an AI guess from a measured fact and weight by confidence. null when
+  // the model could not ground them.
+  capability_tags: AiMarkedField<string[]> | null;
+  summary: AiMarkedField<string> | null; // AI-derived one-liner; null when unknown
+  // Fase 2 (family 6) on-chain traction; nested here by the API (assessment.traction),
+  // NOT at the service top level. null on rows assessed before the traction build (W4).
+  traction: ServiceTraction | null;
+  updated_at: string | null;
+}
+
+/** Full evidence-backed assessment on the service detail. */
+export interface AssessmentDetail {
+  updated_at: string | null;
+  input_hash: string | null;
+  model_id: string | null;
+  prompt_version: string | null;
+  reliability: {
+    uptime: { "24h": number | null; "7d": number | null; "30d": number | null; "90d": number | null };
+    response_p95_ms: number | null;
+    avg_response_ms: number | null;
+    last_checked_at: string | null;
+    consecutive_failures: number | null;
+    total_checks: number | null;
+  } | null;
+  compliance: {
+    grade: "A" | "B" | "C" | "D" | "F" | "unknown";
+    passed: number;
+    total: number;
+    checks: { id: string; label: string; pass: boolean | null }[];
+    pay_to_source: "payTo" | "payToAddress" | "treasury" | null;
+    pay_to_location: "accept" | "element" | null;
+  } | null;
+  site: {
+    homepage: boolean | null;
+    openapi: boolean | null;
+    pricing: boolean | null;
+    llms_txt: boolean | null;
+    robots: boolean | null;
+    terms: boolean | null;
+    checked_at: string | null;
+  } | null;
+  domain: {
+    age_days: number | null;
+    registrar: string | null;
+    free_host: boolean | null;
+    created_date: string | null;
+    checked_at: string | null;
+  } | null;
+  economics: {
+    price_usd: number | null;
+    price_atomic: string | null;
+    model: "flat" | "per-token" | "tiered" | "free" | "unknown";
+    category_percentile: number | null;
+    stability: number | null;
+    // F2 price-range (additive; null on rows stored before the field set existed).
+    price_max_usd: number | null;
+    category_percentile_max: number | null;
+    endpoint_count: number | null;
+    distinct_price_count: number | null;
+  } | null;
+  risk: {
+    level: "clean" | "warning" | "danger";
+    flags: { level: "danger" | "warning"; code: string; evidence: string }[];
+  } | null;
+  synthesis: {
+    summary: AiMarkedField<string> | null;
+    capability_tags: AiMarkedField<string[]> | null;
+    category: AiMarkedField<string> | null;
+    inputs: AiMarkedField<string> | null;
+    outputs: AiMarkedField<string> | null;
+    auth: AiMarkedField<string> | null;
+  } | null;
+  // Fase 2 (family 6) on-chain traction; nested here by the API (assessment.traction),
+  // NOT at the service top level. null on rows assessed before the traction build (W4).
+  traction: ServiceTraction | null;
+}
+
+/** Family 6 - On-chain traction (Fase 2). Additive, identical shape on the list item and the
+ * detail. Every metric is measured deterministically on-chain over the service's known payTo
+ * addresses via recognized settlers (a CONSERVATIVE UNDERCOUNT: settlements the monitor has not
+ * attributed are simply not counted, never estimated up). null != 0 is load-bearing:
+ *   - status 'measured'          -> the metrics are real numbers; a 0 is an HONEST zero
+ *                                   ("known payTo on a measured network, never settled on-chain").
+ *   - status 'no-payto'          -> no payTo is known for this service; metrics are null, not 0.
+ *   - status 'unmeasured-network'-> the only payTo(s) sit on a network we do not yet measure;
+ *                                   metrics are null, not 0.
+ * shared_payout=true means the payTo is shared across more than one service, so the volume is the
+ * OPERATOR's and is NOT split per service; treat such figures as un-attributable per service. */
+export interface ServiceTraction {
+  status: "measured" | "no-payto" | "unmeasured-network";
+  volume_usd_30d: number | null; // decimal USD settled on-chain over the last 30 UTC days
+  tx_count_30d: number | null; // settlement count over the last 30 UTC days
+  unique_buyers_30d: number | null; // distinct payer addresses over the last 30 UTC days
+  last_settlement_at: string | null; // ISO 8601 of the most recent settlement, over all history
+  top_buyer_share_30d: number | null; // 0..1, volume share of the single largest buyer over 30d
+  trend_7d_vs_30d: number | null; // ratio of the last-7d daily rate vs the 30d daily rate
+  shared_payout: boolean; // payTo shared across services => operator volume, not per-service
+  shared_with: number; // count of OTHER services sharing the payTo (0 when not shared)
+  measured_networks: string[]; // canonical CAIP-2 networks that contributed a measurement
+}
+
 export interface ServiceListItem {
   slug: string;
   name: string;
@@ -90,6 +220,10 @@ export interface ServiceListItem {
   avg_response_time_ms: number | null;
   last_checked_at: string | null;
   created_at: string | null;
+  // Filone 2 compact assessment summary; null until the service is first assessed.
+  // Fase 2 (family 6) on-chain traction is nested INSIDE this (assessment.traction),
+  // matching the API; there is no top-level traction field on the service.
+  assessment?: AssessmentSummary | null;
 }
 export interface ServicesListResponse {
   data: ServiceListItem[];
@@ -143,6 +277,10 @@ export interface ServiceDetail {
   networks_caip2: string[]; // canonical CAIP-2 ids, index-aligned with networks
   asset: string;
   endpoints: ServiceEndpoint[];
+  // Filone 2 full evidence-backed assessment; null until the service is first assessed.
+  // Fase 2 (family 6) on-chain traction is nested INSIDE this (assessment.traction),
+  // matching the API; there is no top-level traction field on the service.
+  assessment?: AssessmentDetail | null;
 }
 
 export interface UptimeSnapshot {

@@ -6,13 +6,13 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { registerTools } from "./tools.js";
 
 // version: keep in sync with package.json and server.json (and the user-agent in api.ts).
-export const SERVER_INFO = { name: "x402-list-mcp", version: "0.1.1" };
+export const SERVER_INFO = { name: "x402-list-mcp", version: "0.2.0" };
 
 export function buildServer(): McpServer {
   const server = new McpServer(SERVER_INFO, {
     capabilities: { tools: {} },
     instructions:
-      "x402-list is the directory of services that accept x402 payments, with on-chain-verified settlement volume per facilitator. Use search_x402_services to discover, get_service for detail, find_best_service to recommend (reliability/price, NOT volume), check_health for status, get_facilitator_volumes for the per-facilitator on-chain settlement metric. All money fields are decimal US dollars.",
+      "x402-list is the directory of services that accept x402 payments, with on-chain-verified settlement volume per facilitator. Use search_x402_services to discover, get_service for detail, find_best_service to recommend (ranked mostly on reliability, x402 compliance and price, with a SMALL ~10% weight on measured per-service on-chain traction; a service whose payTo is shared across services (operator-level volume) or sits on an unmeasured network carries a NEUTRAL traction term, never rewarded nor penalized), check_health for status, get_facilitator_volumes for the per-facilitator on-chain settlement metric. On-chain figures are a conservative undercount and all money fields are decimal US dollars.",
   });
   registerTools(server);
   return server;
