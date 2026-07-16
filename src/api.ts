@@ -10,7 +10,7 @@ const BASE = (process.env.X402_LIST_BASE_URL ?? "https://x402-list.com").replace
 const PREFIX = "/api/v1";
 const DEFAULT_TIMEOUT_MS = Number(process.env.X402_LIST_TIMEOUT_MS ?? 15000);
 // version: keep in sync with package.json / server.json / SERVER_INFO in server.ts.
-const USER_AGENT = "x402-list-mcp/0.2.0 (+https://x402-list.com)";
+const USER_AGENT = "x402-list-mcp/0.2.1 (+https://x402-list.com)";
 
 export interface ApiEnvelope<T> {
   data: T;
@@ -349,7 +349,9 @@ export interface StatusResponse {
 
 // ---- Endpoint wrappers (the ONLY place that knows paths and param names) ----
 // Full-text search param is `q`; pagination is `page` / `per_page`.
-// There is NO `verified` query filter; verified is filtered client-side in tools.ts.
+// `verified` IS a real query filter on /services, applied SQL-side by the API: meta.total counts the
+// filtered set, so list_services passes it through instead of filtering the page it got back.
+// (find_best_service still narrows its own scored pool in tools.ts: that is ranking, not this param.)
 
 export const getServices = (q: {
   page?: number;
@@ -359,6 +361,8 @@ export const getServices = (q: {
   network?: string;
   sort?: string;
   q?: string;
+  /** true = verified only, false = unverified only, omit = no filter. Filtered SQL-side, so meta.total follows. */
+  verified?: boolean;
 }) => apiGet<ServiceListItem[]>("/services", q) as Promise<ServicesListResponse>;
 
 export const getService = (slug: string) =>

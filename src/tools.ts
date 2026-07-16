@@ -121,7 +121,7 @@ export function registerTools(server: McpServer): void {
           .boolean()
           .default(false)
           .describe(
-            "If true, return only verified services (filtered client-side; API has no verified query param).",
+            "If true, return only verified services. Filtered server-side, so the result total covers the whole verified set, not just this page.",
           ),
         sort: z
           .enum(["newest", "uptime", "cheapest", "endpoints"])
@@ -151,16 +151,15 @@ export function registerTools(server: McpServer): void {
           sort: args.sort,
           page: args.page,
           per_page: args.per_page,
+          // Server-side filter (audit C17). Only sent when true: verified_only=false
+          // means "no filter", not "unverified only".
+          verified: args.verified_only ? true : undefined,
         });
         let services: ServiceListItem[] = resp.data;
         // Re-assert the network filter client-side: the API silently ignores an
         // unknown value, so never let an unfiltered list pass as filtered.
         if (net) services = services.filter((s) => s.networks.includes(net.abbrev));
-        if (args.verified_only) services = services.filter((s) => s.verified === true);
-        const notes = [
-          "min_price_usd values are decimal US dollars.",
-          "verified_only filters the current page only.",
-        ];
+        const notes = ["min_price_usd values are decimal US dollars."];
         if (net && !net.recognized) {
           notes.push(
             `network '${args.network}' did not match any known network (${await knownNetworksHint()}); no services match it.`,
@@ -694,12 +693,14 @@ export function registerTools(server: McpServer): void {
     "get_facilitator_volumes",
     {
       description:
-        "Get on-chain-verified settlement volume per x402 facilitator (the core x402-list metric). Returns USD settlement volume and transaction counts for 24h/7d/30d/all-time, plus a `verification` flag ('on-chain' when volume has been observed on-chain, else 'listed'). Optionally include a daily timeseries and per-chain breakdown. All volume figures are in US dollars. This is PER-FACILITATOR, not per-service.",
+        "Get on-chain-verified settlement volume per x402 facilitator (the core x402-list metric). Returns USD settlement volume and transaction counts for today (UTC)/7d/30d/all-time, plus a `verification` flag ('on-chain' when volume has been observed on-chain, else 'listed'). Note: the fields named *_24h cover today (UTC) so far, not a trailing 24-hour window, so they reset at 00:00 UTC and read near zero just after midnight; prefer 7d for a stable recent-activity read. Optionally include a daily timeseries and per-chain breakdown. All volume figures are in US dollars. This is PER-FACILITATOR, not per-service.",
       inputSchema: {
         timeframe: z
           .enum(["24h", "7d", "30d", "all"])
           .default("7d")
-          .describe("Drives the sort order of the returned facilitators."),
+          .describe(
+            "Drives the sort order of the returned facilitators. '24h' sorts by today (UTC) so far, not by a trailing 24-hour window.",
+          ),
         include_timeseries: z
           .boolean()
           .default(false)

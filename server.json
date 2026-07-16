@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "com.x402-list/x402-list-mcp",
   "description": "Read-only MCP server for the x402-list directory: discover x402 services and facilitator volume.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "websiteUrl": "https://x402-list.com",
   "repository": {
     "url": "https://github.com/mcccsm/x402-list-mcp",
@@ -13,7 +13,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "x402-list-mcp",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "transport": {
         "type": "stdio"
       },
