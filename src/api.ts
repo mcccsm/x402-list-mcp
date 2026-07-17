@@ -10,7 +10,8 @@ const BASE = (process.env.X402_LIST_BASE_URL ?? "https://x402-list.com").replace
 const PREFIX = "/api/v1";
 const DEFAULT_TIMEOUT_MS = Number(process.env.X402_LIST_TIMEOUT_MS ?? 15000);
 // version: keep in sync with package.json / server.json / SERVER_INFO in server.ts.
-const USER_AGENT = "x402-list-mcp/0.2.1 (+https://x402-list.com)";
+// Exported so the version-sync test can assert it carries the same version as the others.
+export const USER_AGENT = "x402-list-mcp/0.2.2 (+https://x402-list.com)";
 
 export interface ApiEnvelope<T> {
   data: T;
@@ -90,6 +91,10 @@ export interface AssessmentSummary {
   compliance_grade: "A" | "B" | "C" | "D" | "F" | "unknown" | null;
   compliance_passed: number | null;
   compliance_total: number | null;
+  // Machine-stable ids of the conformance checks that FAILED (pass === false), for naming the
+  // failed check inline without pulling the full detail checklist. [] = all evaluable checks pass;
+  // null = no gradeable compliance. Human labels live in the detail assessment.compliance.checks[].
+  compliance_failed_checks: string[] | null;
   reliability_uptime_30d: number | null; // 0-100
   response_p95_ms: number | null;
   price_usd: number | null; // decimal USD (ENTRY / min price)
@@ -188,18 +193,24 @@ export interface AssessmentDetail {
  *   - status 'no-payto'          -> no payTo is known for this service; metrics are null, not 0.
  *   - status 'unmeasured-network'-> the only payTo(s) sit on a network we do not yet measure;
  *                                   metrics are null, not 0.
- * shared_payout=true means the payTo is shared across more than one service, so the volume is the
- * OPERATOR's and is NOT split per service; treat such figures as un-attributable per service. */
+ *   - status 'unresponsive'      -> a shared-payout member whose probe has been failing past the
+ *                                   decay window; its share of the shared address is suppressed
+ *                                   (metrics null), not attributed to it while it is down.
+ * shared_payout=true means the payTo is shared across more than one service; volume_usd_30d,
+ * tx_count_30d and unique_buyers_30d are then attributed PRO-QUOTA (the operator-level figure
+ * divided by the N current members sharing the payout) - a declared convention, not an individually
+ * observed measure. The ratios top_buyer_share_30d and trend_7d_vs_30d are left whole (invariant
+ * under the division), and unique_buyers_30d can be fractional. */
 export interface ServiceTraction {
-  status: "measured" | "no-payto" | "unmeasured-network";
-  volume_usd_30d: number | null; // decimal USD settled on-chain over the last 30 UTC days
-  tx_count_30d: number | null; // settlement count over the last 30 UTC days
-  unique_buyers_30d: number | null; // distinct payer addresses over the last 30 UTC days
+  status: "measured" | "no-payto" | "unmeasured-network" | "unresponsive";
+  volume_usd_30d: number | null; // decimal USD settled on-chain over 30 UTC days; shared => pro-quota (/N)
+  tx_count_30d: number | null; // settlement count over 30 UTC days; shared => pro-quota (/N)
+  unique_buyers_30d: number | null; // distinct payers over 30 UTC days; shared => pro-quota (/N), may be fractional
   last_settlement_at: string | null; // ISO 8601 of the most recent settlement, over all history
-  top_buyer_share_30d: number | null; // 0..1, volume share of the single largest buyer over 30d
-  trend_7d_vs_30d: number | null; // ratio of the last-7d daily rate vs the 30d daily rate
-  shared_payout: boolean; // payTo shared across services => operator volume, not per-service
-  shared_with: number; // count of OTHER services sharing the payTo (0 when not shared)
+  top_buyer_share_30d: number | null; // 0..1, volume share of the single largest buyer over 30d (a ratio, not divided)
+  trend_7d_vs_30d: number | null; // ratio of the last-7d daily rate vs the 30d daily rate (not divided)
+  shared_payout: boolean; // payTo shared across services => volume/buyers attributed pro-quota (/N)
+  shared_with: number; // count of OTHER services sharing the payTo (0 when not shared); N = shared_with + 1
   measured_networks: string[]; // canonical CAIP-2 networks that contributed a measurement
 }
 

@@ -218,7 +218,7 @@ export function registerTools(server: McpServer): void {
             "assessment.synthesis.*":
               "AI-derived (family 10): each field is {value, confidence 0-1, source:'ai'}; value may be 'unknown' when the model could not ground it in the measured signals. An AI-derived field NEVER overrides a measured value.",
             "assessment.traction":
-              "Fase 2 (family 6): on-chain settlement traction measured over this service's known payTo addresses via recognized settlers. All *_usd/count fields are a CONSERVATIVE UNDERCOUNT (unattributed settlements are not counted, never estimated up). volume_usd_30d = decimal USD over the last 30 UTC days; tx_count_30d/unique_buyers_30d = counts over 30d; last_settlement_at = ISO 8601 of the most recent settlement; top_buyer_share_30d = 0-1 concentration of the largest buyer; trend_7d_vs_30d = last-7d daily rate over the 30d daily rate; measured_networks = canonical CAIP-2 chains that contributed. status: 'measured' = real numbers where 0 is an HONEST zero; 'no-payto'/'unmeasured-network' = null, never a fake zero. shared_payout=true means the payTo is shared across services, so the volume is the OPERATOR's and is NOT split per service (do not read it as this service's revenue).",
+              "Fase 2 (family 6): on-chain settlement traction measured over this service's known payTo addresses via recognized settlers. All *_usd/count fields are a CONSERVATIVE UNDERCOUNT (unattributed settlements are not counted, never estimated up). volume_usd_30d = decimal USD over the last 30 UTC days; tx_count_30d/unique_buyers_30d = counts over 30d; last_settlement_at = ISO 8601 of the most recent settlement; top_buyer_share_30d = 0-1 concentration of the largest buyer; trend_7d_vs_30d = last-7d daily rate over the 30d daily rate; measured_networks = canonical CAIP-2 chains that contributed. status: 'measured' = real numbers where 0 is an HONEST zero; 'no-payto'/'unmeasured-network' = null, never a fake zero; 'unresponsive' = a shared-payout member whose probe has been failing for 7 days, so its share is suppressed (null). shared_payout=true means the payTo is shared across N services; volume_usd_30d, tx_count_30d and unique_buyers_30d are then attributed PRO-QUOTA (the operator-level figure divided by the N current members) - a declared convention, not an individually observed measure. The ratios top_buyer_share_30d and trend_7d_vs_30d are left whole (invariant under the division). unique_buyers_30d can therefore be fractional.",
           },
         });
       } catch (e) {
@@ -232,13 +232,13 @@ export function registerTools(server: McpServer): void {
 
   // -------------------------------------------------------------------------
   // 3.3 find_best_service (reliability/compliance/price primary; on-chain traction weighs ~10%,
-  //     shared-payout and unmeasured-network services carry a neutral traction term)
+  //     shared-payout traction is attributed pro-quota; unmeasured/suppressed carry no term)
   // -------------------------------------------------------------------------
   server.registerTool(
     "find_best_service",
     {
       description:
-        "Recommend the best x402 service(s) for a need. Ranked mostly on per-service reliability (live status, verification, uptime, response time), x402 compliance, and price (USD), filtered by category and network, with a SMALL (~10%) weight on on-chain traction: settlement volume, transaction count, and unique buyers measured per service over its known payTo addresses via recognized settlers (a conservative undercount, not an estimate). Traction never dominates; a service whose payTo is shared across services (operator-level volume), or that sits on a network not yet measured, carries a NEUTRAL traction term (never rewarded or penalized, weights renormalized). Each recommendation also reports top_buyer_share_30d, the 30d volume share of the single largest buyer, as a published concentration signal for the reader; it does not enter the score. Optionally attach ecosystem facilitator-volume context separately.",
+        "Recommend the best x402 service(s) for a need. Ranked mostly on per-service reliability (live status, verification, uptime, response time), x402 compliance, and price (USD), filtered by category and network, with a SMALL (~10%) weight on on-chain traction: settlement volume, transaction count, and unique buyers measured per service over its known payTo addresses via recognized settlers (a conservative undercount, not an estimate). Traction never dominates; a service whose payTo is shared across services has its traction attributed PRO-QUOTA (volume and buyers divided by the number of services sharing the payout), so sharing neither rewards nor spam-clones a service. A service on a network not yet measured, or a shared member whose probe has been failing, carries no traction term (the other weights are renormalized). Traction also requires recent settlement: with no on-chain settlement in the last 30 UTC days the term is 0. Each recommendation also reports top_buyer_share_30d, the 30d volume share of the single largest buyer, as a published concentration signal for the reader; it does not enter the score. Optionally attach ecosystem facilitator-volume context separately.",
       inputSchema: {
         category: z
           .string()
@@ -306,64 +306,56 @@ export function registerTools(server: McpServer): void {
         const hasQuery = queryTokens.length > 0;
 
         // Build a candidate pool for a given server-side text query, deduped by slug and
-        // (optionally) widened past the online-only set. `wide` pages through the WHOLE
-        // catalogue (every status, following the API's meta.total_pages up to a small cap)
-        // so relevance ranking sees tag-only and offline matches too; a single page-1 pull
-        // silently dropped services once the directory grew past one page. Otherwise it keeps
-        // the original online-first pool and only widens when too thin for `limit`.
+        // (optionally) widened past the online-only set. Both modes page through the API up to
+        // WIDE_PAGE_CAP (following the API's meta.total_pages) so no candidate is silently dropped
+        // once the directory grows past one page: `wide` pages the WHOLE catalogue (every status)
+        // so relevance ranking sees tag-only and offline matches too; otherwise it pages the
+        // online-first set and only widens to the full catalogue when still too thin for `limit`.
+        // A single page-1 pull silently dropped tail-uptime services on BOTH paths once the
+        // directory grew past one page. require_verified is applied SERVER-SIDE (audit C17): the
+        // pool is verified-scoped at the source, so it stays complete under the page cap instead of
+        // being trimmed after a capped fetch. `verified` is sent only when true (false means "no
+        // filter", not "unverified only").
         const WIDE_PAGE_CAP = 5; // per_page 100 => up to 500 services, covers the full catalogue with headroom
         const buildPool = async (
           serverQ: string | undefined,
           wide: boolean,
         ): Promise<ServiceListItem[]> => {
           const bySlug = new Map<string, ServiceListItem>();
-          if (wide) {
+          // Page through one status slice (status=undefined = every status), merging into bySlug.
+          const pageThrough = async (status: string | undefined): Promise<void> => {
             const first = await getServices({
               q: serverQ,
               category: args.category,
               network: net?.abbrev,
-              status: undefined,
+              status,
               sort: "uptime",
               per_page: 100,
               page: 1,
+              verified: args.require_verified ? true : undefined,
             });
-            for (const s of first.data) bySlug.set(s.slug, s);
+            for (const s of first.data) if (!bySlug.has(s.slug)) bySlug.set(s.slug, s);
             const totalPages = Math.min(first.meta?.total_pages ?? 1, WIDE_PAGE_CAP);
             for (let page = 2; page <= totalPages; page++) {
               const next = await getServices({
                 q: serverQ,
                 category: args.category,
                 network: net?.abbrev,
-                status: undefined,
+                status,
                 sort: "uptime",
                 per_page: 100,
                 page,
+                verified: args.require_verified ? true : undefined,
               });
               for (const s of next.data) if (!bySlug.has(s.slug)) bySlug.set(s.slug, s);
             }
-            return [...bySlug.values()];
-          }
-          const first = await getServices({
-            q: serverQ,
-            category: args.category,
-            network: net?.abbrev,
-            status: "online",
-            sort: "uptime",
-            per_page: 100,
-            page: 1,
-          });
-          for (const s of first.data) bySlug.set(s.slug, s);
-          if (bySlug.size < args.limit) {
-            const widen = await getServices({
-              q: serverQ,
-              category: args.category,
-              network: net?.abbrev,
-              status: undefined,
-              sort: "uptime",
-              per_page: 100,
-              page: 1,
-            });
-            for (const s of widen.data) if (!bySlug.has(s.slug)) bySlug.set(s.slug, s);
+          };
+          if (wide) {
+            await pageThrough(undefined);
+          } else {
+            await pageThrough("online");
+            // Online set still too thin for `limit`: widen to the full catalogue (all statuses).
+            if (bySlug.size < args.limit) await pageThrough(undefined);
           }
           return [...bySlug.values()];
         };
@@ -376,7 +368,10 @@ export function registerTools(server: McpServer): void {
           if (args.max_price_usd !== undefined) {
             p = p.filter((s) => s.min_price_usd !== null && s.min_price_usd <= args.max_price_usd!);
           }
-          if (args.require_verified) p = p.filter((s) => s.verified === true);
+          // require_verified is enforced server-side in buildPool (SQL-side `verified` param, audit
+          // C17), so it is NOT re-asserted here: unlike an unknown `network` the API honors it
+          // reliably, and filtering after a capped fetch would trim the pool the server already
+          // scoped. It also inherits the derived verified decay (verified AND recently responding).
           return p;
         };
         // Family 8 (risk): a DETERMINISTIC danger flag removes a service from a "recommend
@@ -417,7 +412,7 @@ export function registerTools(server: McpServer): void {
           : null;
 
         const rankingBasis =
-          "Two stages. (1) RELEVANCE: when a free-text need is given, each candidate is scored on how well your query matches its AI-derived capability tags and summary plus its name/description/category (falls back to plain text match). (2) QUALITY: measured families combined with explicit weights - reliability (live status, uptime, response time), x402 compliance grade, economics (price and in-category price percentile), safety risk, and a SMALL ~10% weight on on-chain traction (per-service settlement volume, transaction count and unique buyers, measured over the service's known payTo via recognized settlers as a conservative undercount). Traction never dominates; a service with a shared payTo or on an unmeasured network carries a neutral traction term (the other weights are renormalized, so it is neither rewarded nor penalized). Each recommendation also carries top_buyer_share_30d (0-1, the 30d volume share of the largest single buyer) as a published concentration signal for the reader only; it is not part of the score. AI-derived fields are labeled {value,confidence,source:'ai'} and NEVER override a measured value.";
+          "Two stages. (1) RELEVANCE: when a free-text need is given, each candidate is scored on how well your query matches its AI-derived capability tags and summary plus its name/description/category (falls back to plain text match). (2) QUALITY: measured families combined with explicit weights - reliability (live status, uptime, response time), x402 compliance grade, economics (price and in-category price percentile), safety risk, and a SMALL ~10% weight on on-chain traction (per-service settlement volume, transaction count and unique buyers, measured over the service's known payTo via recognized settlers as a conservative undercount). Traction never dominates; a service with a shared payTo has its traction attributed pro-quota (volume and buyers divided by the number of services sharing the payout), and a service on an unmeasured network or a shared member whose probe is failing carries no traction term (the other weights are renormalized). The term also gates on recent settlement: no settlement in the last 30 UTC days scores 0. Each recommendation also carries top_buyer_share_30d (0-1, the 30d volume share of the largest single buyer) as a published concentration signal for the reader only; it is not part of the score. AI-derived fields are labeled {value,confidence,source:'ai'} and NEVER override a measured value.";
 
         if (pool.length === 0) {
           return ok({
@@ -465,9 +460,8 @@ export function registerTools(server: McpServer): void {
         const reliabilityScore = (s: ServiceListItem) =>
           relWeights.status * statusScore(s) + relWeights.uptime * uptimeScore(s) + relWeights.speed * speedScore(s);
 
-        // Family 2 (compliance): x402 conformance grade; verified is a weak fallback when unassessed.
-        const complianceScore = (s: ServiceListItem) =>
-          s.assessment?.compliance_grade ? gradeScore(s.assessment.compliance_grade) : s.verified ? 0.6 : 0.4;
+        // Family 2 (compliance): continuous x402 conformance pass ratio (module-level
+        // complianceScore below); verified is a weak fallback when the service is unassessed.
 
         // Family 5 (economics): cheaper price + lower in-category price percentile = better.
         const priceOf = (s: ServiceListItem) => s.assessment?.price_usd ?? s.min_price_usd;
@@ -487,38 +481,21 @@ export function registerTools(server: McpServer): void {
         // Family 8 (risk): a residual warning is penalized (danger already excluded above).
         const riskScore = (s: ServiceListItem) => (s.assessment?.risk_level === "warning" ? 0.4 : 1.0);
 
-        // Family 6 (on-chain traction, Fase 2): a SMALL, bounded quality term. Derived ONLY from
-        // measured fields and applied with weight TRACTION_WEIGHT so it can never dominate the four
-        // assessment families. Per D5 the term is NEUTRAL - excluded, with the four family weights
-        // (which already sum to 1) carrying the whole score unchanged - whenever the payTo is shared
-        // across operators (volume is the operator's, not attributable per service) or the status is
-        // not 'measured' (no payTo, or an unmeasured network). Such services get neither reward nor
-        // penalty. A 'measured', non-shared service with a true zero contributes ~0: an honest
-        // reflection of no observed on-chain traction, not a fabricated penalty.
+        // Family 6 (on-chain traction, Fase 2): a SMALL, bounded quality term (module-level
+        // tractionScore below), applied with weight TRACTION_WEIGHT so it can never dominate the four
+        // assessment families. The term is null (excluded, the four family weights renormalized) only
+        // when the status is not 'measured': no payTo, an unmeasured network, or a shared member
+        // whose probe is failing (D-b2 suppression, status 'unresponsive'). Shared-payout members
+        // that ARE measured now enter with their PRO-QUOTA numbers (volume/N, buyers/N, divided
+        // upstream in the API serializer) instead of being exempted, so sharing neither rewards nor
+        // spam-clones a service (D-b5). A 'measured' service with no settlement in the last 30 UTC
+        // days contributes 0 (the D-b4 gate), an honest reflection of no recent on-chain traction.
         const TRACTION_WEIGHT = 0.1;
-        // Bounded 0..1 traction score = recency (0.4) + volume (0.35) + buyers (0.25). Volume and
-        // buyers use log saturation so a few large services do not swamp the scale; recency decays
-        // linearly from full at <=1 day stale to 0 at >=30 days. Each sub-score clamps to 0..1, so
-        // the whole term is always bounded 0..1.
-        const VOLUME_SAT_USD = 1000; // 30d volume at/above this saturates the volume sub-score to 1
-        const BUYERS_SAT = 20; // 30d unique buyers at/above this saturates the buyers sub-score to 1
-        const tractionScore = (t: ServiceTraction): number => {
-          const last = t.last_settlement_at ? Date.parse(t.last_settlement_at) : NaN;
-          const daysStale = Number.isFinite(last)
-            ? (Date.now() - last) / 86_400_000
-            : Number.POSITIVE_INFINITY;
-          const recency = clamp01((30 - daysStale) / 29); // 1.0 at <=1d stale, 0 at >=30d
-          const vol = Math.max(0, t.volume_usd_30d ?? 0);
-          const volScore = clamp01(Math.log10(1 + vol) / Math.log10(1 + VOLUME_SAT_USD));
-          const buyers = Math.max(0, t.unique_buyers_30d ?? 0);
-          const buyersScore = clamp01(Math.log10(1 + buyers) / Math.log10(1 + BUYERS_SAT));
-          return clamp01(0.4 * recency + 0.35 * volScore + 0.25 * buyersScore);
-        };
-        // The traction term for a service, or null when it must stay NEUTRAL (excluded + renormalized).
+        // The traction term for a service, or null when it is not 'measured' (excluded + renormalized).
         // Traction is nested at assessment.traction (matching the API), not on the service top level.
         const tractionTerm = (s: ServiceListItem): number | null => {
           const t = s.assessment?.traction;
-          if (!t || t.status !== "measured" || t.shared_payout === true) return null;
+          if (!t || t.status !== "measured") return null;
           return tractionScore(t);
         };
 
@@ -537,8 +514,8 @@ export function registerTools(server: McpServer): void {
             qWeights.compliance * complianceScore(s) +
             qWeights.economics * economicsScore(s) +
             qWeights.risk * riskScore(s);
-          // D5: traction gets TRACTION_WEIGHT; when neutral it is excluded and the four family
-          // weights (already summing to 1) carry the whole score unchanged (renormalized).
+          // Traction gets TRACTION_WEIGHT; when the term is null (not 'measured') it is excluded and
+          // the four family weights (already summing to 1) carry the whole score unchanged.
           const t = tractionTerm(s);
           const quality = t === null ? base : (1 - TRACTION_WEIGHT) * base + TRACTION_WEIGHT * t;
           // Relevance gates the ordering only when a query is present (50/50 blend);
@@ -581,13 +558,16 @@ export function registerTools(server: McpServer): void {
             networks: s.networks,
             endpoint_count: s.endpoint_count,
             compliance_grade: s.assessment?.compliance_grade ?? null,
+            // Ids of the x402 conformance checks that failed (pass === false); names the failing
+            // check inline. [] = all pass, null = no compliance graded.
+            compliance_failed_checks: s.assessment?.compliance_failed_checks ?? null,
             risk_level: s.assessment?.risk_level ?? null,
             capability_tags: s.assessment?.capability_tags ?? null,
             // Fase 2 on-chain traction (additive), read from assessment.traction to match the API.
-            // Passed verbatim: null unless status is 'measured'. shared_payout=true => operator
-            // volume, not attributable to this service. top_buyer_share_30d is PUBLISHED as a
-            // concentration signal for the reader; it is NOT an input to the score (D5 traction
-            // weight stays ~10%).
+            // Passed verbatim: null unless status is 'measured'. shared_payout=true => the volume/
+            // buyers are attributed pro-quota (the operator figure divided by the members sharing the
+            // payout). top_buyer_share_30d is PUBLISHED as a concentration signal for the reader; it
+            // is NOT an input to the score (traction weight stays ~10%).
             ...tractionRecFields(s.assessment?.traction),
             score: Math.round(entry.score * 100) / 100,
             relevance: queryTokens.length === 0 ? null : Math.round(entry.relevance * 100) / 100,
@@ -772,10 +752,10 @@ function buildWhy(s: ServiceListItem): string {
 
 // The Fase 2 traction fields surfaced verbatim on each recommendation, read from
 // assessment.traction to match the API. Every field is a passthrough (null unless status is
-// 'measured'). shared_payout=true => operator volume, not attributable per service.
-// top_buyer_share_30d is PUBLISHED as a concentration signal for the reader; it is NOT part of
-// the ranking score (D5 traction weight stays ~10%). Exported so the recommendation shape is
-// unit-testable without a live server.
+// 'measured'). shared_payout=true => the volume/buyers are the operator-level figure attributed
+// pro-quota (divided by the current members sharing the payout). top_buyer_share_30d is PUBLISHED
+// as a concentration signal for the reader; it is NOT part of the ranking score (traction weight
+// stays ~10%). Exported so the recommendation shape is unit-testable without a live server.
 export function tractionRecFields(t: ServiceTraction | null | undefined) {
   return {
     traction_status: t?.status ?? null,
@@ -786,9 +766,36 @@ export function tractionRecFields(t: ServiceTraction | null | undefined) {
   };
 }
 
-// x402 compliance grade -> 0..1 quality sub-score. unknown / unrecognized -> neutral 0.5.
-function gradeScore(grade: string): number {
-  return ({ A: 1.0, B: 0.8, C: 0.6, D: 0.4, F: 0.2 } as Record<string, number>)[grade] ?? 0.5;
+// Family 2 (compliance) -> 0..1 quality sub-score. The CONTINUOUS pass ratio (passed/total)
+// rather than a 5-band grade bucket, so ANY failed real check (transport, payTo, price, network)
+// discriminates immediately instead of only a band break; a pool that is uniformly graded A still
+// separates on the underlying ratio. When there is no gradeable compliance (total 0/null) verified
+// is a weak fallback. Exported so the ranking is unit-testable off a fixture.
+export function complianceScore(s: ServiceListItem): number {
+  const a = s.assessment;
+  const total = a?.compliance_total ?? null;
+  const passed = a?.compliance_passed ?? null;
+  if (total !== null && total > 0 && passed !== null) return passed / total;
+  return s.verified ? 0.6 : 0.4;
+}
+
+// Family 6 (on-chain traction) -> 0..1 quality sub-score (D-b4 variant A). A GATE times a weighted
+// mix of volume and buyers: gate = 1 only when there is settlement in the last 30 UTC days
+// (volume_usd_30d > 0, the SAME window as the published 30d figure), else 0. Recency is a threshold
+// you clear, not points you bank for settling $0.01 today. Volume dominates (0.65); buyers saturate
+// at 100 (0.35); both use log saturation so a few large services do not swamp the scale. For a
+// shared-payout member the volume/buyers are already the PRO-QUOTA slice (divided by N upstream in
+// the API serializer), so a diluted number scores lower. clamp01 keeps the whole term bounded 0..1.
+// Exported so the ranking is unit-testable off a fixture.
+const VOLUME_SAT_USD = 1000; // 30d volume at/above this saturates the volume sub-score to 1
+const BUYERS_SAT = 100; // 30d unique buyers at/above this saturates the buyers sub-score to 1
+export function tractionScore(t: ServiceTraction): number {
+  const gate = (t.volume_usd_30d ?? 0) > 0 ? 1 : 0;
+  const vol = Math.max(0, t.volume_usd_30d ?? 0);
+  const volScore = clamp01(Math.log10(1 + vol) / Math.log10(1 + VOLUME_SAT_USD));
+  const buyers = Math.max(0, t.unique_buyers_30d ?? 0);
+  const buyersScore = clamp01(Math.log10(1 + buyers) / Math.log10(1 + BUYERS_SAT));
+  return clamp01(gate * (0.65 * volScore + 0.35 * buyersScore));
 }
 
 // Split a free-text need into distinct lowercase tokens (>= 2 chars).
