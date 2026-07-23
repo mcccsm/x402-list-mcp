@@ -18,6 +18,14 @@ const measured: ServiceTraction = {
   shared_payout: false,
   shared_with: 0,
   measured_networks: ["eip155:8453"],
+  // TRENO A additive fields (mirror the API serializer).
+  first_settlement_at: "2026-05-01T00:00:00.000Z",
+  volume_usd_all_time: 9876.5,
+  tx_count_all_time: 321,
+  median_settlement_usd_30d: 2.5,
+  max_settlement_usd_30d: 50,
+  settled_via: ["facilitator-a"],
+  shared_with_services: [],
 };
 
 test("emits top_buyer_share_30d alongside the four existing traction fields", () => {

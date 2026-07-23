@@ -12,6 +12,8 @@ import {
   getServices,
   getService,
   getServiceUptime,
+  getServiceVolumeSeries,
+  getServiceBuyersSeries,
   getFacilitators,
   getStatus,
   getNetworks,
@@ -196,31 +198,58 @@ export function registerTools(server: McpServer): void {
         "Get full detail for one x402 service by slug: live status, uptime over 24h/7d/30d/90d, average response time, accepted networks and settlement asset, and every priced endpoint with its USD price. Use after search_x402_services to inspect a specific service. Prices are in US dollars; the per-endpoint `price` field is a raw on-chain atomic token amount, not dollars.",
       inputSchema: {
         slug: z.string().trim().min(1).max(200).describe("Service slug, e.g. 'my-api'."),
+        include_series: z
+          .boolean()
+          .default(false)
+          .describe(
+            "If true, also attach this service's daily on-chain series under `series` (settlement volume and distinct buyers, one point per UTC day over the most recent 90 days, oldest first). Off by default to keep the response small.",
+          ),
       },
     },
     async (args) => {
-      trackTool("get_service", { slug: String(args.slug).slice(0, 128) });
+      trackTool("get_service", {
+        slug: String(args.slug).slice(0, 128),
+        include_series: args.include_series,
+      });
       try {
         const resp = await getService(args.slug);
-        return ok({
+        const units: Record<string, string> = {
+          min_price_usd: "decimal US dollars (number)",
+          "pricing.price_usd": "decimal US dollars (string)",
+          "pricing.price":
+            "ATOMIC on-chain token units (uint256 string), NOT dollars, do not rescale",
+          uptime:
+            "percentages 0-100 for windows 24h/7d/30d/90d; null = not yet monitored in that window (0 = observed down)",
+          assessment:
+            "per-service evidence-backed assessment (reliability, x402 compliance, site/docs, domain, economics, risk, plus an AI synthesis); null until the service is first assessed. Measured fields are plain values; 'unknown'/null are honest, not zero.",
+          "assessment.economics":
+            "price_usd/category_percentile are the ENTRY (min) price and its in-category rank; price_max_usd/category_percentile_max carry the highest tier and its rank; endpoint_count and distinct_price_count (1 = flat, >1 = tiered) describe the price spread. All decimal USD; new fields are null on rows assessed before they existed.",
+          "assessment.synthesis.*":
+            "AI-derived (family 10): each field is {value, confidence 0-1, source:'ai'}; value may be 'unknown' when the model could not ground it in the measured signals. An AI-derived field NEVER overrides a measured value.",
+          "assessment.traction":
+            "Fase 2 (family 6): on-chain settlement traction measured over this service's known payTo addresses via recognized settlers. All *_usd/count fields are a CONSERVATIVE UNDERCOUNT (unattributed settlements are not counted, never estimated up). volume_usd_30d = decimal USD over the last 30 UTC days; tx_count_30d/unique_buyers_30d = counts over 30d; last_settlement_at = ISO 8601 of the most recent settlement; top_buyer_share_30d = 0-1 concentration of the largest buyer; trend_7d_vs_30d = last-7d daily rate over the 30d daily rate; measured_networks = canonical CAIP-2 chains that contributed. status: 'measured' = real numbers where 0 is an HONEST zero; 'no-payto'/'unmeasured-network' = null, never a fake zero; 'unresponsive' = a shared-payout member whose probe has been failing for 7 days, so its share is suppressed (null). shared_payout=true means the payTo is shared across N services; volume_usd_30d, tx_count_30d and unique_buyers_30d are then attributed PRO-QUOTA (the operator-level figure divided by the N current members) - a declared convention, not an individually observed measure. The ratios top_buyer_share_30d and trend_7d_vs_30d are left whole (invariant under the division). unique_buyers_30d can therefore be fractional. Beyond the 30d figures the traction block carries `first_settlement_at`, all-time `volume_usd_all_time` / `tx_count_all_time` (pro-quota on a shared payout, like the 30d figures), the per-settlement `median_settlement_usd_30d` / `max_settlement_usd_30d` (invariant amounts, never divided), the `settled_via` facilitator list (volume first), and `shared_with_services` (the sibling listed services on a shared payout address).",
+        };
+        const payload: Record<string, unknown> = {
           service: resp.data, // full ServiceDetail verbatim (includes `assessment` when present)
-          units: {
-            min_price_usd: "decimal US dollars (number)",
-            "pricing.price_usd": "decimal US dollars (string)",
-            "pricing.price":
-              "ATOMIC on-chain token units (uint256 string), NOT dollars, do not rescale",
-            uptime:
-              "percentages 0-100 for windows 24h/7d/30d/90d; null = not yet monitored in that window (0 = observed down)",
-            assessment:
-              "per-service evidence-backed assessment (reliability, x402 compliance, site/docs, domain, economics, risk, plus an AI synthesis); null until the service is first assessed. Measured fields are plain values; 'unknown'/null are honest, not zero.",
-            "assessment.economics":
-              "price_usd/category_percentile are the ENTRY (min) price and its in-category rank; price_max_usd/category_percentile_max carry the highest tier and its rank; endpoint_count and distinct_price_count (1 = flat, >1 = tiered) describe the price spread. All decimal USD; new fields are null on rows assessed before they existed.",
-            "assessment.synthesis.*":
-              "AI-derived (family 10): each field is {value, confidence 0-1, source:'ai'}; value may be 'unknown' when the model could not ground it in the measured signals. An AI-derived field NEVER overrides a measured value.",
-            "assessment.traction":
-              "Fase 2 (family 6): on-chain settlement traction measured over this service's known payTo addresses via recognized settlers. All *_usd/count fields are a CONSERVATIVE UNDERCOUNT (unattributed settlements are not counted, never estimated up). volume_usd_30d = decimal USD over the last 30 UTC days; tx_count_30d/unique_buyers_30d = counts over 30d; last_settlement_at = ISO 8601 of the most recent settlement; top_buyer_share_30d = 0-1 concentration of the largest buyer; trend_7d_vs_30d = last-7d daily rate over the 30d daily rate; measured_networks = canonical CAIP-2 chains that contributed. status: 'measured' = real numbers where 0 is an HONEST zero; 'no-payto'/'unmeasured-network' = null, never a fake zero; 'unresponsive' = a shared-payout member whose probe has been failing for 7 days, so its share is suppressed (null). shared_payout=true means the payTo is shared across N services; volume_usd_30d, tx_count_30d and unique_buyers_30d are then attributed PRO-QUOTA (the operator-level figure divided by the N current members) - a declared convention, not an individually observed measure. The ratios top_buyer_share_30d and trend_7d_vs_30d are left whole (invariant under the division). unique_buyers_30d can therefore be fractional.",
-          },
-        });
+          units,
+        };
+        // include_series: attach the daily on-chain series (read-only passthrough). Fail-soft per
+        // series - a fetch failure attaches null (never a fabricated 0), the detail still returns.
+        if (args.include_series) {
+          const [volRes, buyRes] = await Promise.allSettled([
+            getServiceVolumeSeries(args.slug),
+            getServiceBuyersSeries(args.slug),
+          ]);
+          payload.series = {
+            volume: volRes.status === "fulfilled" ? volRes.value : null,
+            buyers: buyRes.status === "fulfilled" ? buyRes.value : null,
+          };
+          units["series.volume"] =
+            "Present only when include_series=true. Daily on-chain settlement volume: { data: [{date (UTC day), volume_usd (decimal USD), tx_count}], caveat }, oldest first, over the most recent 90 days. Operator-level and a conservative undercount: do not sum across services that share a payout address. null when the series could not be fetched (never a fabricated 0).";
+          units["series.buyers"] =
+            "Present only when include_series=true. Daily distinct on-chain buyers: { data: [{date (UTC day), unique_buyers}], caveat }, oldest first, over the most recent 90 days. unique_buyers is exact for a single-address service and an upper bound for a multi-address one; a conservative undercount. null when the series could not be fetched (never a fabricated 0).";
+        }
+        return ok(payload);
       } catch (e) {
         if (e instanceof ApiError && e.status === 404) {
           return fail(`Service '${args.slug}' not found.`);

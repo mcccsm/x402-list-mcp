@@ -11,7 +11,7 @@ const PREFIX = "/api/v1";
 const DEFAULT_TIMEOUT_MS = Number(process.env.X402_LIST_TIMEOUT_MS ?? 15000);
 // version: keep in sync with package.json / server.json / SERVER_INFO in server.ts.
 // Exported so the version-sync test can assert it carries the same version as the others.
-export const USER_AGENT = "x402-list-mcp/0.2.2 (+https://x402-list.com)";
+export const USER_AGENT = "x402-list-mcp/0.3.0 (+https://x402-list.com)";
 
 export interface ApiEnvelope<T> {
   data: T;
@@ -212,6 +212,18 @@ export interface ServiceTraction {
   shared_payout: boolean; // payTo shared across services => volume/buyers attributed pro-quota (/N)
   shared_with: number; // count of OTHER services sharing the payTo (0 when not shared); N = shared_with + 1
   measured_networks: string[]; // canonical CAIP-2 networks that contributed a measurement
+  // TRENO A additive (mirror of the root serializer). Always emitted by the API; null/[] when the
+  // stored snapshot predates the extension or the status is not 'measured' (null != 0). The all-time
+  // COUNTING figures (volume_usd_all_time / tx_count_all_time) follow the SAME pro-quota /N convention
+  // as the 30d ones. first_settlement_at, the per-settlement median/max, settled_via and
+  // shared_with_services are INVARIANT facts and are never divided.
+  first_settlement_at: string | null; // ISO 8601 of the first settlement ever recorded; null when never settled
+  volume_usd_all_time: number | null; // decimal USD since listing; shared => pro-quota (/N)
+  tx_count_all_time: number | null; // settlement count since listing; shared => pro-quota (/N)
+  median_settlement_usd_30d: number | null; // median single-settlement amount over 30d (invariant, never divided)
+  max_settlement_usd_30d: number | null; // largest single-settlement amount over 30d (invariant, never divided)
+  settled_via: string[]; // facilitator ids that settled this service over 30d, ordered by volume; [] when none
+  shared_with_services: { slug: string; name: string }[]; // sibling services on a shared payout; [] when not shared
 }
 
 export interface ServiceListItem {
@@ -381,6 +393,32 @@ export const getService = (slug: string) =>
 
 export const getServiceUptime = (slug: string, period?: string) =>
   apiGet<UptimeSnapshot[]>(`/services/${encodeURIComponent(slug)}/uptime`, { period });
+
+// On-chain daily series (Fase 2). One point per UTC day, oldest first, measured over the service's
+// payTo mapping via recognized settlers - a conservative undercount. USD passthrough (no rescale).
+export interface ServiceVolumePoint {
+  date: string; // UTC day, YYYY-MM-DD
+  volume_usd: number; // decimal USD settled on-chain that day
+  tx_count: number; // settlement count that day
+}
+export interface ServiceBuyersPoint {
+  date: string; // UTC day, YYYY-MM-DD
+  unique_buyers: number; // distinct on-chain buyers that day (upper bound for a multi-address service)
+}
+// These two series routes wrap their array in { data, caveat } (no meta): caveat is the in-band
+// do-not-sum / suppression note, passed through verbatim from the API.
+export interface SeriesResponse<T> {
+  data: T[];
+  caveat?: string;
+}
+export const getServiceVolumeSeries = (slug: string, period?: string) =>
+  apiGet<ServiceVolumePoint[]>(`/services/${encodeURIComponent(slug)}/volume`, { period }) as Promise<
+    SeriesResponse<ServiceVolumePoint>
+  >;
+export const getServiceBuyersSeries = (slug: string, period?: string) =>
+  apiGet<ServiceBuyersPoint[]>(`/services/${encodeURIComponent(slug)}/buyers`, { period }) as Promise<
+    SeriesResponse<ServiceBuyersPoint>
+  >;
 
 export const getFacilitators = (q: {
   page?: number;

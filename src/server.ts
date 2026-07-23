@@ -6,7 +6,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { registerTools } from "./tools.js";
 
 // version: keep in sync with package.json and server.json (and the user-agent in api.ts).
-export const SERVER_INFO = { name: "x402-list-mcp", version: "0.2.2" };
+export const SERVER_INFO = { name: "x402-list-mcp", version: "0.3.0" };
 
 export function buildServer(): McpServer {
   const server = new McpServer(SERVER_INFO, {

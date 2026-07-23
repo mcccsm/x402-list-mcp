@@ -1,6 +1,6 @@
 {
   "name": "x402-list-mcp",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "mcpName": "com.x402-list/x402-list-mcp",
   "description": "MCP server for x402-list: discover x402 payment services and on-chain-verified facilitator settlement volume. Read-only wrapper over the public x402-list API.",
   "license": "MIT",
