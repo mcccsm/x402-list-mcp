@@ -546,7 +546,7 @@ export function registerTools(server: McpServer): void {
     "assess_services",
     {
       description:
-        "Run a fresh, PAID AI assessment comparing a shortlist of already-listed x402 services for a stated need. It charges a one-time $0.25 USDC on Base (x402) for the fresh reasoning only; reading an already-computed assessment stays free via get_service. This tool is a pure pass-through: it never holds keys, never signs, and never settles. Call it once WITHOUT payment_signature_b64 to receive the x402 payment challenge (accepts[], amount, payTo, and a base64 PAYMENT-REQUIRED header) verbatim; sign accepts[0] client-side with your own wallet; then call again with the SAME question and services plus payment_signature_b64 to receive the assessment report and a base64 PAYMENT-RESPONSE settlement receipt. If the fresh run cannot be produced the server answers before settling, so the caller is never charged, and there is no refund. Prices are US dollars.",
+        "Run a fresh, PAID AI assessment comparing a shortlist of already-listed x402 services for a stated need. It charges a one-time $0.25 USDC on Base (x402) for the fresh reasoning only; reading an already-computed assessment stays free via get_service. This tool is a pure pass-through: it never holds keys, never signs, and never settles. Call it once WITHOUT payment_signature_b64 to receive the x402 payment challenge (accepts[], amount, payTo, and a base64 PAYMENT-REQUIRED header) verbatim; sign accepts[0] client-side with your own wallet; then call again with the SAME question and services plus payment_signature_b64 to receive the assessment report and a base64 PAYMENT-RESPONSE settlement receipt. Optionally include a probe target as probe { slug, endpoint_path? } to also test one listed service live: when the server has live probing armed, after the fresh reasoning it makes a real x402 payment to that endpoint and analyzes what it returns, and the challenge is then priced at $0.25 plus that endpoint price X (probe fees are non-refundable regardless of outcome); the report then carries a probe_report block with a verdict and truncated extracts, never the verbatim third-party response, and when live probing is not armed the probe is ignored. If the fresh run cannot be produced the server answers before settling, so the caller is never charged, and there is no refund. Prices are US dollars.",
       inputSchema: {
         question: z
           .string()
@@ -569,16 +569,42 @@ export function registerTools(server: McpServer): void {
           .describe(
             "Base64 PAYMENT-SIGNATURE for the x402 payment, produced by signing the accepts[0] challenge client-side. Omit on the first call to receive the challenge; set it on the retry to run the paid assessment.",
           ),
+        // Optional live-probe target (treno 4). Pure pass-through: forwarded verbatim to the server,
+        // which ignores it unless live probing is armed and prices the challenge $0.25 + the endpoint
+        // price X. The package holds no keys and never signs the extra X.
+        probe: z
+          .object({
+            slug: z
+              .string()
+              .trim()
+              .min(1)
+              .max(200)
+              .describe("Slug of one listed service to probe live (must be one of the services above or another listed slug)."),
+            endpoint_path: z
+              .string()
+              .trim()
+              .min(1)
+              .max(500)
+              .optional()
+              .describe("Optional URL path on that service to probe, beginning with '/'. Omit to let the server pick the cheapest priced USDC-on-Base endpoint."),
+          })
+          .optional()
+          .describe(
+            "Optional live-probe request: pay one listed service for real and analyze what it returns. When the server has probing armed the price becomes $0.25 plus that endpoint price X (non-refundable); the report gains a probe_report block with a verdict and truncated extracts, never the verbatim third-party body. Ignored when probing is not armed.",
+          ),
       },
     },
     async (args) => {
       trackTool("assess_services", {
         service_count: args.services.length,
         has_signature: Boolean(args.payment_signature_b64),
+        has_probe: Boolean(args.probe),
       });
       try {
         const result = await postAssess(
-          { question: args.question, services: args.services },
+          // probe is forwarded verbatim (undefined drops out of the JSON body); the server is the
+          // single authority on whether it is offered and how the challenge is priced.
+          { question: args.question, services: args.services, probe: args.probe },
           args.payment_signature_b64,
         );
         if (result.status === 200) {

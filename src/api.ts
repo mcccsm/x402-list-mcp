@@ -11,7 +11,7 @@ const PREFIX = "/api/v1";
 const DEFAULT_TIMEOUT_MS = Number(process.env.X402_LIST_TIMEOUT_MS ?? 15000);
 // version: keep in sync with package.json / server.json / SERVER_INFO in server.ts.
 // Exported so the version-sync test can assert it carries the same version as the others.
-export const USER_AGENT = "x402-list-mcp/0.4.0 (+https://x402-list.com)";
+export const USER_AGENT = "x402-list-mcp/0.4.1 (+https://x402-list.com)";
 
 export interface ApiEnvelope<T> {
   data: T;
@@ -496,7 +496,10 @@ export interface AssessPostResult {
  * caller's own client-side signature on the retry; this module never produces or holds it.
  */
 export async function postAssess(
-  payload: { question: string; services: string[] },
+  // `probe` (treno 4) is a VERBATIM pass-through of the optional live-probe target: the package adds
+  // no probe logic, holds no keys, and never signs the extra X. The server ignores it unless the
+  // probe module is armed, and prices the challenge dynamically ($0.25 + the endpoint price X).
+  payload: { question: string; services: string[]; probe?: { slug: string; endpoint_path?: string } },
   paymentSignatureB64?: string,
   opts?: { timeoutMs?: number },
 ): Promise<AssessPostResult> {

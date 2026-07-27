@@ -49,7 +49,7 @@ Hosted endpoint: `https://mcp.x402-list.com/mcp`. Health probe: `GET /healthz` r
 | `find_best_service` | Ranked recommendation for a need, computed server-side (GET /api/v1/best). Ranks mostly by reliability, x402 compliance and price (status, verified, uptime, response time, USD price), with a small (~10%) weight on per-service on-chain traction; shared-payout and unmeasured-network services stay neutral. |
 | `check_health` | Live status, directory-wide or per service (uptime snapshots, consecutive failures). |
 | `get_facilitator_volumes` | Per-facilitator on-chain-verified settlement volume (24h/7d/30d/all) in USD, tx counts, and an on-chain vs listed flag. |
-| `assess_services` | **Paid** ($0.25 USDC on Base, x402). Fresh on-demand AI comparison of a shortlist of listed services for a stated need. Pass-through: it never holds keys, never signs, and never settles. Call without `payment_signature_b64` to get the x402 challenge verbatim, sign it client-side, then retry with the signature to get the report. |
+| `assess_services` | **Paid** ($0.25 USDC on Base, x402). Fresh on-demand AI comparison of a shortlist of listed services for a stated need. Pass-through: it never holds keys, never signs, and never settles. Call without `payment_signature_b64` to get the x402 challenge verbatim, sign it client-side, then retry with the signature to get the report. Optionally add a `probe` target `{ slug, endpoint_path? }` to also test one listed service live: the price becomes $0.25 plus that endpoint price X (non-refundable), and the report gains a `probe_report` block with a verdict and truncated extracts, never the verbatim third-party body. |
 
 ## Units note
 

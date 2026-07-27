@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "com.x402-list/x402-list-mcp",
-  "description": "MCP server for the x402-list directory: discover x402 services, facilitator volume, server-ranked recommendations, and paid on-demand assessments (x402 pass-through).",
-  "version": "0.4.0",
+  "description": "x402-list directory MCP: services, facilitator volume, ranked picks, paid assessments.",
+  "version": "0.4.1",
   "websiteUrl": "https://x402-list.com",
   "repository": {
     "url": "https://github.com/mcccsm/x402-list-mcp",
@@ -13,7 +13,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "x402-list-mcp",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "transport": {
         "type": "stdio"
       },

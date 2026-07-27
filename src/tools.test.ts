@@ -332,3 +332,61 @@ test("assess_services: signature supplied but server did not settle (402) -> cha
     restoreFetch();
   }
 });
+
+// ── assess_services: optional live-probe block (treno 4, verbatim pass-through) ─────
+
+test("assess_services: forwards the optional probe block verbatim in the POST body", async () => {
+  installFetch((url) =>
+    url.pathname.endsWith("/assess")
+      ? makeRes(402, CHALLENGE_402, { "PAYMENT-REQUIRED": "BASE64-CHALLENGE" })
+      : makeRes(404, {}),
+  );
+  try {
+    await TOOLS.assess_services({
+      question: "which is cheapest and does it actually work?",
+      services: ["a-svc", "b-svc"],
+      probe: { slug: "a-svc", endpoint_path: "/v1/quote" },
+    });
+    assert.equal(CALLS[0].method, "POST");
+    // The package adds no probe logic: the block goes on the wire exactly as received.
+    assert.deepEqual(JSON.parse(CALLS[0].body!), {
+      question: "which is cheapest and does it actually work?",
+      services: ["a-svc", "b-svc"],
+      probe: { slug: "a-svc", endpoint_path: "/v1/quote" },
+    });
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("assess_services: a probe with only a slug is forwarded verbatim (no endpoint_path)", async () => {
+  installFetch((url) =>
+    url.pathname.endsWith("/assess")
+      ? makeRes(402, CHALLENGE_402, { "PAYMENT-REQUIRED": "BASE64-CHALLENGE" })
+      : makeRes(404, {}),
+  );
+  try {
+    await TOOLS.assess_services({ question: "q", services: ["a-svc"], probe: { slug: "a-svc" } });
+    assert.deepEqual(JSON.parse(CALLS[0].body!), {
+      question: "q",
+      services: ["a-svc"],
+      probe: { slug: "a-svc" },
+    });
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("assess_services: without a probe the body carries no probe key (unchanged flow)", async () => {
+  installFetch((url) =>
+    url.pathname.endsWith("/assess")
+      ? makeRes(402, CHALLENGE_402, { "PAYMENT-REQUIRED": "BASE64-CHALLENGE" })
+      : makeRes(404, {}),
+  );
+  try {
+    await TOOLS.assess_services({ question: "q", services: ["a-svc"] });
+    assert.equal("probe" in JSON.parse(CALLS[0].body!), false);
+  } finally {
+    restoreFetch();
+  }
+});
