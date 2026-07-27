@@ -6,7 +6,7 @@ MCP server for x402-list: discover x402 payment services and on-chain-verified f
 
 [x402-list](https://x402-list.com) is the directory of services that accept x402 (HTTP 402 stablecoin) payments. Its distinctive, defensible data is **on-chain-verified settlement volume per facilitator**, not self-reported numbers. Listed services are continuously health-monitored (uptime, response time, status).
 
-This package is a **thin, read-only wrapper** over the public x402-list HTTP JSON API. It holds no keys, touches no database, and makes no writes. It exposes the directory to AI agents through the Model Context Protocol.
+This package is a **thin wrapper** over the public x402-list HTTP JSON API. It holds no keys, touches no database, and makes no writes to the directory. Every tool but one is read-only; the single paid tool, `assess_services`, only relays an x402 payment challenge that you sign yourself client-side (the package never holds keys, never signs, and never settles). It exposes the directory to AI agents through the Model Context Protocol.
 
 ## Install and quick start
 
@@ -46,9 +46,10 @@ Hosted endpoint: `https://mcp.x402-list.com/mcp`. Health probe: `GET /healthz` r
 | --- | --- |
 | `search_x402_services` | Search and filter the directory by query, category, network, status; sort by newest/uptime/cheapest/endpoints. |
 | `get_service` | Full detail for one service by slug: endpoints, per-endpoint USD pricing, uptime windows, networks, settlement asset. |
-| `find_best_service` | Ranked recommendation for a need. Ranks mostly by reliability, x402 compliance and price (status, verified, uptime, response time, USD price), with a small (~10%) weight on per-service on-chain traction; shared-payout and unmeasured-network services stay neutral. |
+| `find_best_service` | Ranked recommendation for a need, computed server-side (GET /api/v1/best). Ranks mostly by reliability, x402 compliance and price (status, verified, uptime, response time, USD price), with a small (~10%) weight on per-service on-chain traction; shared-payout and unmeasured-network services stay neutral. |
 | `check_health` | Live status, directory-wide or per service (uptime snapshots, consecutive failures). |
 | `get_facilitator_volumes` | Per-facilitator on-chain-verified settlement volume (24h/7d/30d/all) in USD, tx counts, and an on-chain vs listed flag. |
+| `assess_services` | **Paid** ($0.25 USDC on Base, x402). Fresh on-demand AI comparison of a shortlist of listed services for a stated need. Pass-through: it never holds keys, never signs, and never settles. Call without `payment_signature_b64` to get the x402 challenge verbatim, sign it client-side, then retry with the signature to get the report. |
 
 ## Units note
 

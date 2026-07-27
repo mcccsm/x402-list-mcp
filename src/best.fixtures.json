@@ -1,0 +1,2134 @@
+{
+  "ranking_version": 1,
+  "cases": [
+    {
+      "name": "core balanced no query",
+      "pool_ref": "core",
+      "params": {
+        "prefer": "balanced",
+        "limit": 5
+      },
+      "expected_recommendations": [
+        {
+          "rank": 1,
+          "slug": "alpha",
+          "name": "Alpha API",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 99,
+          "avg_response_time_ms": 120,
+          "min_price_usd": 0.01,
+          "price_max_usd": 0.02,
+          "category_percentile_max": 12,
+          "distinct_price_count": 2,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 3,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 1000,
+          "unique_buyers_30d": 100,
+          "shared_payout": false,
+          "top_buyer_share_30d": 0.2,
+          "score": 0.99,
+          "relevance": null,
+          "quality": 0.99,
+          "why": "online, verified, 99% 24h uptime, 120ms, $0.01 min price, compliance A"
+        },
+        {
+          "rank": 2,
+          "slug": "bravo",
+          "name": "Bravo API",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 95,
+          "avg_response_time_ms": 300,
+          "min_price_usd": 0.05,
+          "price_max_usd": 0.05,
+          "category_percentile_max": 40,
+          "distinct_price_count": 1,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 2,
+          "compliance_grade": "B",
+          "compliance_failed_checks": [
+            "price_present"
+          ],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 250,
+          "unique_buyers_30d": 10,
+          "shared_payout": true,
+          "top_buyer_share_30d": 0.5,
+          "score": 0.86,
+          "relevance": null,
+          "quality": 0.86,
+          "why": "online, verified, 95% 24h uptime, 300ms, $0.05 min price, compliance B"
+        },
+        {
+          "rank": 3,
+          "slug": "charlie",
+          "name": "Charlie API",
+          "category": "data",
+          "status": "degraded",
+          "verified": false,
+          "uptime_24h": 70,
+          "avg_response_time_ms": 800,
+          "min_price_usd": 0.02,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": null,
+          "compliance_failed_checks": null,
+          "risk_level": null,
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.68,
+          "relevance": null,
+          "quality": 0.68,
+          "why": "degraded, 70% 24h uptime, 800ms, $0.02 min price"
+        },
+        {
+          "rank": 4,
+          "slug": "delta",
+          "name": "Delta API",
+          "category": "data",
+          "status": "offline",
+          "verified": true,
+          "uptime_24h": 20,
+          "avg_response_time_ms": 1500,
+          "min_price_usd": 0.1,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": "C",
+          "compliance_failed_checks": [
+            "transport_https",
+            "payto_shape",
+            "price_present"
+          ],
+          "risk_level": "warning",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 0,
+          "unique_buyers_30d": 5,
+          "shared_payout": false,
+          "top_buyer_share_30d": null,
+          "score": 0.27,
+          "relevance": null,
+          "quality": 0.27,
+          "why": "offline, verified, 20% 24h uptime, 1500ms, $0.1 min price, compliance C, risk: warning"
+        }
+      ],
+      "expected_excluded_danger": [
+        "echo"
+      ]
+    },
+    {
+      "name": "core cheapest",
+      "pool_ref": "core",
+      "params": {
+        "prefer": "cheapest",
+        "limit": 5
+      },
+      "expected_recommendations": [
+        {
+          "rank": 1,
+          "slug": "alpha",
+          "name": "Alpha API",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 99,
+          "avg_response_time_ms": 120,
+          "min_price_usd": 0.01,
+          "price_max_usd": 0.02,
+          "category_percentile_max": 12,
+          "distinct_price_count": 2,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 3,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 1000,
+          "unique_buyers_30d": 100,
+          "shared_payout": false,
+          "top_buyer_share_30d": 0.2,
+          "score": 0.98,
+          "relevance": null,
+          "quality": 0.98,
+          "why": "online, verified, 99% 24h uptime, 120ms, $0.01 min price, compliance A"
+        },
+        {
+          "rank": 2,
+          "slug": "charlie",
+          "name": "Charlie API",
+          "category": "data",
+          "status": "degraded",
+          "verified": false,
+          "uptime_24h": 70,
+          "avg_response_time_ms": 800,
+          "min_price_usd": 0.02,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": null,
+          "compliance_failed_checks": null,
+          "risk_level": null,
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.77,
+          "relevance": null,
+          "quality": 0.77,
+          "why": "degraded, 70% 24h uptime, 800ms, $0.02 min price"
+        },
+        {
+          "rank": 3,
+          "slug": "bravo",
+          "name": "Bravo API",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 95,
+          "avg_response_time_ms": 300,
+          "min_price_usd": 0.05,
+          "price_max_usd": 0.05,
+          "category_percentile_max": 40,
+          "distinct_price_count": 1,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 2,
+          "compliance_grade": "B",
+          "compliance_failed_checks": [
+            "price_present"
+          ],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 250,
+          "unique_buyers_30d": 10,
+          "shared_payout": true,
+          "top_buyer_share_30d": 0.5,
+          "score": 0.76,
+          "relevance": null,
+          "quality": 0.76,
+          "why": "online, verified, 95% 24h uptime, 300ms, $0.05 min price, compliance B"
+        },
+        {
+          "rank": 4,
+          "slug": "delta",
+          "name": "Delta API",
+          "category": "data",
+          "status": "offline",
+          "verified": true,
+          "uptime_24h": 20,
+          "avg_response_time_ms": 1500,
+          "min_price_usd": 0.1,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": "C",
+          "compliance_failed_checks": [
+            "transport_https",
+            "payto_shape",
+            "price_present"
+          ],
+          "risk_level": "warning",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 0,
+          "unique_buyers_30d": 5,
+          "shared_payout": false,
+          "top_buyer_share_30d": null,
+          "score": 0.19,
+          "relevance": null,
+          "quality": 0.19,
+          "why": "offline, verified, 20% 24h uptime, 1500ms, $0.1 min price, compliance C, risk: warning"
+        }
+      ],
+      "expected_excluded_danger": [
+        "echo"
+      ]
+    },
+    {
+      "name": "core fastest",
+      "pool_ref": "core",
+      "params": {
+        "prefer": "fastest",
+        "limit": 5
+      },
+      "expected_recommendations": [
+        {
+          "rank": 1,
+          "slug": "alpha",
+          "name": "Alpha API",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 99,
+          "avg_response_time_ms": 120,
+          "min_price_usd": 0.01,
+          "price_max_usd": 0.02,
+          "category_percentile_max": 12,
+          "distinct_price_count": 2,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 3,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 1000,
+          "unique_buyers_30d": 100,
+          "shared_payout": false,
+          "top_buyer_share_30d": 0.2,
+          "score": 0.99,
+          "relevance": null,
+          "quality": 0.99,
+          "why": "online, verified, 99% 24h uptime, 120ms, $0.01 min price, compliance A"
+        },
+        {
+          "rank": 2,
+          "slug": "bravo",
+          "name": "Bravo API",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 95,
+          "avg_response_time_ms": 300,
+          "min_price_usd": 0.05,
+          "price_max_usd": 0.05,
+          "category_percentile_max": 40,
+          "distinct_price_count": 1,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 2,
+          "compliance_grade": "B",
+          "compliance_failed_checks": [
+            "price_present"
+          ],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 250,
+          "unique_buyers_30d": 10,
+          "shared_payout": true,
+          "top_buyer_share_30d": 0.5,
+          "score": 0.87,
+          "relevance": null,
+          "quality": 0.87,
+          "why": "online, verified, 95% 24h uptime, 300ms, $0.05 min price, compliance B"
+        },
+        {
+          "rank": 3,
+          "slug": "charlie",
+          "name": "Charlie API",
+          "category": "data",
+          "status": "degraded",
+          "verified": false,
+          "uptime_24h": 70,
+          "avg_response_time_ms": 800,
+          "min_price_usd": 0.02,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": null,
+          "compliance_failed_checks": null,
+          "risk_level": null,
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.69,
+          "relevance": null,
+          "quality": 0.69,
+          "why": "degraded, 70% 24h uptime, 800ms, $0.02 min price"
+        },
+        {
+          "rank": 4,
+          "slug": "delta",
+          "name": "Delta API",
+          "category": "data",
+          "status": "offline",
+          "verified": true,
+          "uptime_24h": 20,
+          "avg_response_time_ms": 1500,
+          "min_price_usd": 0.1,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": "C",
+          "compliance_failed_checks": [
+            "transport_https",
+            "payto_shape",
+            "price_present"
+          ],
+          "risk_level": "warning",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 0,
+          "unique_buyers_30d": 5,
+          "shared_payout": false,
+          "top_buyer_share_30d": null,
+          "score": 0.21,
+          "relevance": null,
+          "quality": 0.21,
+          "why": "offline, verified, 20% 24h uptime, 1500ms, $0.1 min price, compliance C, risk: warning"
+        }
+      ],
+      "expected_excluded_danger": [
+        "echo"
+      ]
+    },
+    {
+      "name": "core most_reliable",
+      "pool_ref": "core",
+      "params": {
+        "prefer": "most_reliable",
+        "limit": 5
+      },
+      "expected_recommendations": [
+        {
+          "rank": 1,
+          "slug": "alpha",
+          "name": "Alpha API",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 99,
+          "avg_response_time_ms": 120,
+          "min_price_usd": 0.01,
+          "price_max_usd": 0.02,
+          "category_percentile_max": 12,
+          "distinct_price_count": 2,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 3,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 1000,
+          "unique_buyers_30d": 100,
+          "shared_payout": false,
+          "top_buyer_share_30d": 0.2,
+          "score": 1,
+          "relevance": null,
+          "quality": 1,
+          "why": "online, verified, 99% 24h uptime, 120ms, $0.01 min price, compliance A"
+        },
+        {
+          "rank": 2,
+          "slug": "bravo",
+          "name": "Bravo API",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 95,
+          "avg_response_time_ms": 300,
+          "min_price_usd": 0.05,
+          "price_max_usd": 0.05,
+          "category_percentile_max": 40,
+          "distinct_price_count": 1,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 2,
+          "compliance_grade": "B",
+          "compliance_failed_checks": [
+            "price_present"
+          ],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 250,
+          "unique_buyers_30d": 10,
+          "shared_payout": true,
+          "top_buyer_share_30d": 0.5,
+          "score": 0.92,
+          "relevance": null,
+          "quality": 0.92,
+          "why": "online, verified, 95% 24h uptime, 300ms, $0.05 min price, compliance B"
+        },
+        {
+          "rank": 3,
+          "slug": "charlie",
+          "name": "Charlie API",
+          "category": "data",
+          "status": "degraded",
+          "verified": false,
+          "uptime_24h": 70,
+          "avg_response_time_ms": 800,
+          "min_price_usd": 0.02,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": null,
+          "compliance_failed_checks": null,
+          "risk_level": null,
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.65,
+          "relevance": null,
+          "quality": 0.65,
+          "why": "degraded, 70% 24h uptime, 800ms, $0.02 min price"
+        },
+        {
+          "rank": 4,
+          "slug": "delta",
+          "name": "Delta API",
+          "category": "data",
+          "status": "offline",
+          "verified": true,
+          "uptime_24h": 20,
+          "avg_response_time_ms": 1500,
+          "min_price_usd": 0.1,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": "C",
+          "compliance_failed_checks": [
+            "transport_https",
+            "payto_shape",
+            "price_present"
+          ],
+          "risk_level": "warning",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 0,
+          "unique_buyers_30d": 5,
+          "shared_payout": false,
+          "top_buyer_share_30d": null,
+          "score": 0.29,
+          "relevance": null,
+          "quality": 0.29,
+          "why": "offline, verified, 20% 24h uptime, 1500ms, $0.1 min price, compliance C, risk: warning"
+        }
+      ],
+      "expected_excluded_danger": [
+        "echo"
+      ]
+    },
+    {
+      "name": "core max_price 0.04 filters out delta",
+      "pool_ref": "core",
+      "params": {
+        "prefer": "balanced",
+        "limit": 5,
+        "max_price_usd": 0.04
+      },
+      "expected_recommendations": [
+        {
+          "rank": 1,
+          "slug": "alpha",
+          "name": "Alpha API",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 99,
+          "avg_response_time_ms": 120,
+          "min_price_usd": 0.01,
+          "price_max_usd": 0.02,
+          "category_percentile_max": 12,
+          "distinct_price_count": 2,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 3,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 1000,
+          "unique_buyers_30d": 100,
+          "shared_payout": false,
+          "top_buyer_share_30d": 0.2,
+          "score": 0.99,
+          "relevance": null,
+          "quality": 0.99,
+          "why": "online, verified, 99% 24h uptime, 120ms, $0.01 min price, compliance A"
+        },
+        {
+          "rank": 2,
+          "slug": "charlie",
+          "name": "Charlie API",
+          "category": "data",
+          "status": "degraded",
+          "verified": false,
+          "uptime_24h": 70,
+          "avg_response_time_ms": 800,
+          "min_price_usd": 0.02,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": null,
+          "compliance_failed_checks": null,
+          "risk_level": null,
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.47,
+          "relevance": null,
+          "quality": 0.47,
+          "why": "degraded, 70% 24h uptime, 800ms, $0.02 min price"
+        }
+      ],
+      "expected_excluded_danger": [
+        "echo"
+      ]
+    },
+    {
+      "name": "core limit clamp low (0 -> 1)",
+      "pool_ref": "core",
+      "params": {
+        "prefer": "balanced",
+        "limit": 0
+      },
+      "expected_recommendations": [
+        {
+          "rank": 1,
+          "slug": "alpha",
+          "name": "Alpha API",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 99,
+          "avg_response_time_ms": 120,
+          "min_price_usd": 0.01,
+          "price_max_usd": 0.02,
+          "category_percentile_max": 12,
+          "distinct_price_count": 2,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 3,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 1000,
+          "unique_buyers_30d": 100,
+          "shared_payout": false,
+          "top_buyer_share_30d": 0.2,
+          "score": 0.99,
+          "relevance": null,
+          "quality": 0.99,
+          "why": "online, verified, 99% 24h uptime, 120ms, $0.01 min price, compliance A"
+        }
+      ],
+      "expected_excluded_danger": [
+        "echo"
+      ]
+    },
+    {
+      "name": "core limit clamp high (50 -> 20)",
+      "pool_ref": "core",
+      "params": {
+        "prefer": "balanced",
+        "limit": 50
+      },
+      "expected_recommendations": [
+        {
+          "rank": 1,
+          "slug": "alpha",
+          "name": "Alpha API",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 99,
+          "avg_response_time_ms": 120,
+          "min_price_usd": 0.01,
+          "price_max_usd": 0.02,
+          "category_percentile_max": 12,
+          "distinct_price_count": 2,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 3,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 1000,
+          "unique_buyers_30d": 100,
+          "shared_payout": false,
+          "top_buyer_share_30d": 0.2,
+          "score": 0.99,
+          "relevance": null,
+          "quality": 0.99,
+          "why": "online, verified, 99% 24h uptime, 120ms, $0.01 min price, compliance A"
+        },
+        {
+          "rank": 2,
+          "slug": "bravo",
+          "name": "Bravo API",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 95,
+          "avg_response_time_ms": 300,
+          "min_price_usd": 0.05,
+          "price_max_usd": 0.05,
+          "category_percentile_max": 40,
+          "distinct_price_count": 1,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 2,
+          "compliance_grade": "B",
+          "compliance_failed_checks": [
+            "price_present"
+          ],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 250,
+          "unique_buyers_30d": 10,
+          "shared_payout": true,
+          "top_buyer_share_30d": 0.5,
+          "score": 0.86,
+          "relevance": null,
+          "quality": 0.86,
+          "why": "online, verified, 95% 24h uptime, 300ms, $0.05 min price, compliance B"
+        },
+        {
+          "rank": 3,
+          "slug": "charlie",
+          "name": "Charlie API",
+          "category": "data",
+          "status": "degraded",
+          "verified": false,
+          "uptime_24h": 70,
+          "avg_response_time_ms": 800,
+          "min_price_usd": 0.02,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": null,
+          "compliance_failed_checks": null,
+          "risk_level": null,
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.68,
+          "relevance": null,
+          "quality": 0.68,
+          "why": "degraded, 70% 24h uptime, 800ms, $0.02 min price"
+        },
+        {
+          "rank": 4,
+          "slug": "delta",
+          "name": "Delta API",
+          "category": "data",
+          "status": "offline",
+          "verified": true,
+          "uptime_24h": 20,
+          "avg_response_time_ms": 1500,
+          "min_price_usd": 0.1,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": "C",
+          "compliance_failed_checks": [
+            "transport_https",
+            "payto_shape",
+            "price_present"
+          ],
+          "risk_level": "warning",
+          "capability_tags": null,
+          "traction_status": "measured",
+          "volume_usd_30d": 0,
+          "unique_buyers_30d": 5,
+          "shared_payout": false,
+          "top_buyer_share_30d": null,
+          "score": 0.27,
+          "relevance": null,
+          "quality": 0.27,
+          "why": "offline, verified, 20% 24h uptime, 1500ms, $0.1 min price, compliance C, risk: warning"
+        }
+      ],
+      "expected_excluded_danger": [
+        "echo"
+      ]
+    },
+    {
+      "name": "query relevance floor drops no-match",
+      "pool_ref": "query",
+      "params": {
+        "prefer": "balanced",
+        "q": "image translation",
+        "limit": 5
+      },
+      "expected_recommendations": [
+        {
+          "rank": 1,
+          "slug": "cap-only",
+          "name": "Generic Endpoint",
+          "category": "other",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 97,
+          "avg_response_time_ms": 250,
+          "min_price_usd": 0.02,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": {
+            "value": [
+              "image",
+              "translation"
+            ],
+            "confidence": 0.8,
+            "source": "ai"
+          },
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.89,
+          "relevance": 0.8,
+          "quality": 0.98,
+          "why": "online, verified, 97% 24h uptime, 250ms, $0.02 min price, compliance A"
+        },
+        {
+          "rank": 2,
+          "slug": "img-pro",
+          "name": "Image Translator",
+          "category": "AI",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 98,
+          "avg_response_time_ms": 250,
+          "min_price_usd": 0.02,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 2,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.74,
+          "relevance": 0.5,
+          "quality": 0.99,
+          "why": "online, verified, 98% 24h uptime, 250ms, $0.02 min price, compliance A"
+        },
+        {
+          "rank": 3,
+          "slug": "summary-only",
+          "name": "Mystery Box",
+          "category": "other",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 96,
+          "avg_response_time_ms": 250,
+          "min_price_usd": 0.02,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.74,
+          "relevance": 0.5,
+          "quality": 0.98,
+          "why": "online, verified, 96% 24h uptime, 250ms, $0.02 min price, compliance A"
+        }
+      ],
+      "expected_excluded_danger": []
+    },
+    {
+      "name": "fallback substring over base_url",
+      "pool_ref": "fallback",
+      "params": {
+        "prefer": "balanced",
+        "q": "zzqx",
+        "limit": 5
+      },
+      "expected_recommendations": [
+        {
+          "rank": 1,
+          "slug": "hidden",
+          "name": "Hidden Service",
+          "category": "other",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 90,
+          "avg_response_time_ms": 250,
+          "min_price_usd": 0.02,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.49,
+          "relevance": 0,
+          "quality": 0.97,
+          "why": "online, verified, 90% 24h uptime, 250ms, $0.02 min price, compliance A"
+        }
+      ],
+      "expected_excluded_danger": [
+        "danger-hidden"
+      ]
+    },
+    {
+      "name": "tie-break full 6-key cascade",
+      "pool_ref": "tie",
+      "params": {
+        "prefer": "cheapest",
+        "limit": 20
+      },
+      "expected_recommendations": [
+        {
+          "rank": 1,
+          "slug": "tie-e",
+          "name": "Tie tie-e",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 95,
+          "avg_response_time_ms": 200,
+          "min_price_usd": 0.03,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.89,
+          "relevance": null,
+          "quality": 0.89,
+          "why": "online, verified, 95% 24h uptime, 200ms, $0.03 min price, compliance A"
+        },
+        {
+          "rank": 2,
+          "slug": "tie-f",
+          "name": "Tie tie-f",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 95,
+          "avg_response_time_ms": 200,
+          "min_price_usd": 0.03,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.89,
+          "relevance": null,
+          "quality": 0.89,
+          "why": "online, verified, 95% 24h uptime, 200ms, $0.03 min price, compliance A"
+        },
+        {
+          "rank": 3,
+          "slug": "tie-g",
+          "name": "Tie tie-g",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 95,
+          "avg_response_time_ms": 200,
+          "min_price_usd": 0.03,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.89,
+          "relevance": null,
+          "quality": 0.89,
+          "why": "online, verified, 95% 24h uptime, 200ms, $0.03 min price, compliance A"
+        },
+        {
+          "rank": 4,
+          "slug": "tie-c",
+          "name": "Tie tie-c",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 95,
+          "avg_response_time_ms": 200,
+          "min_price_usd": 0.05,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.89,
+          "relevance": null,
+          "quality": 0.89,
+          "why": "online, verified, 95% 24h uptime, 200ms, $0.05 min price, compliance A"
+        },
+        {
+          "rank": 5,
+          "slug": "tie-d",
+          "name": "Tie tie-d",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 95,
+          "avg_response_time_ms": 200,
+          "min_price_usd": 0.08,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.89,
+          "relevance": null,
+          "quality": 0.89,
+          "why": "online, verified, 95% 24h uptime, 200ms, $0.08 min price, compliance A"
+        },
+        {
+          "rank": 6,
+          "slug": "tie-b",
+          "name": "Tie tie-b",
+          "category": "data",
+          "status": "online",
+          "verified": true,
+          "uptime_24h": 90,
+          "avg_response_time_ms": 200,
+          "min_price_usd": 0.05,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.89,
+          "relevance": null,
+          "quality": 0.89,
+          "why": "online, verified, 90% 24h uptime, 200ms, $0.05 min price, compliance A"
+        },
+        {
+          "rank": 7,
+          "slug": "tie-a",
+          "name": "Tie tie-a",
+          "category": "data",
+          "status": "online",
+          "verified": false,
+          "uptime_24h": 90,
+          "avg_response_time_ms": 200,
+          "min_price_usd": 0.05,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "distinct_price_count": null,
+          "networks": [
+            "BSE"
+          ],
+          "endpoint_count": 1,
+          "compliance_grade": "A",
+          "compliance_failed_checks": [],
+          "risk_level": "clean",
+          "capability_tags": null,
+          "traction_status": null,
+          "volume_usd_30d": null,
+          "unique_buyers_30d": null,
+          "shared_payout": null,
+          "top_buyer_share_30d": null,
+          "score": 0.89,
+          "relevance": null,
+          "quality": 0.89,
+          "why": "online, 90% 24h uptime, 200ms, $0.05 min price, compliance A"
+        }
+      ],
+      "expected_excluded_danger": []
+    }
+  ],
+  "pools": {
+    "core": [
+      {
+        "slug": "alpha",
+        "name": "Alpha API",
+        "description": "fast data service",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "data",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 3,
+        "min_price_usd": 0.01,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 99,
+        "avg_response_time_ms": 120,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 99,
+          "response_p95_ms": 150,
+          "price_usd": 0.01,
+          "category_percentile": 10,
+          "price_stability": null,
+          "price_max_usd": 0.02,
+          "category_percentile_max": 12,
+          "endpoint_count": null,
+          "distinct_price_count": 2,
+          "risk_level": "clean",
+          "capability_tags": null,
+          "summary": null,
+          "traction": {
+            "status": "measured",
+            "volume_usd_30d": 1000,
+            "tx_count_30d": null,
+            "unique_buyers_30d": 100,
+            "last_settlement_at": null,
+            "top_buyer_share_30d": 0.2,
+            "trend_7d_vs_30d": null,
+            "shared_payout": false,
+            "shared_with": 0,
+            "measured_networks": [
+              "eip155:8453"
+            ],
+            "first_settlement_at": null,
+            "volume_usd_all_time": null,
+            "tx_count_all_time": null,
+            "median_settlement_usd_30d": null,
+            "max_settlement_usd_30d": null,
+            "settled_via": [],
+            "shared_with_services": [],
+            "caveat": "Conservative undercount."
+          },
+          "updated_at": null
+        }
+      },
+      {
+        "slug": "bravo",
+        "name": "Bravo API",
+        "description": "reliable data service",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "data",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 2,
+        "min_price_usd": 0.05,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 95,
+        "avg_response_time_ms": 300,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "B",
+          "compliance_passed": 10,
+          "compliance_total": 11,
+          "compliance_failed_checks": [
+            "price_present"
+          ],
+          "reliability_uptime_30d": 96,
+          "response_p95_ms": 320,
+          "price_usd": 0.05,
+          "category_percentile": 40,
+          "price_stability": null,
+          "price_max_usd": 0.05,
+          "category_percentile_max": 40,
+          "endpoint_count": null,
+          "distinct_price_count": 1,
+          "risk_level": "clean",
+          "capability_tags": null,
+          "summary": null,
+          "traction": {
+            "status": "measured",
+            "volume_usd_30d": 250,
+            "tx_count_30d": null,
+            "unique_buyers_30d": 10,
+            "last_settlement_at": null,
+            "top_buyer_share_30d": 0.5,
+            "trend_7d_vs_30d": null,
+            "shared_payout": true,
+            "shared_with": 3,
+            "measured_networks": [
+              "eip155:8453"
+            ],
+            "first_settlement_at": null,
+            "volume_usd_all_time": null,
+            "tx_count_all_time": null,
+            "median_settlement_usd_30d": null,
+            "max_settlement_usd_30d": null,
+            "settled_via": [],
+            "shared_with_services": [],
+            "caveat": "Conservative undercount."
+          },
+          "updated_at": null
+        }
+      },
+      {
+        "slug": "charlie",
+        "name": "Charlie API",
+        "description": "unassessed data service",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "data",
+        "source": "submitted",
+        "status": "degraded",
+        "verified": false,
+        "endpoint_count": 1,
+        "min_price_usd": 0.02,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 70,
+        "avg_response_time_ms": 800,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": null
+      },
+      {
+        "slug": "delta",
+        "name": "Delta API",
+        "description": "flaky data service",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "data",
+        "source": "submitted",
+        "status": "offline",
+        "verified": true,
+        "endpoint_count": 1,
+        "min_price_usd": 0.1,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 20,
+        "avg_response_time_ms": 1500,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "C",
+          "compliance_passed": 8,
+          "compliance_total": 11,
+          "compliance_failed_checks": [
+            "transport_https",
+            "payto_shape",
+            "price_present"
+          ],
+          "reliability_uptime_30d": 25,
+          "response_p95_ms": 1600,
+          "price_usd": 0.1,
+          "category_percentile": 90,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "warning",
+          "capability_tags": null,
+          "summary": null,
+          "traction": {
+            "status": "measured",
+            "volume_usd_30d": 0,
+            "tx_count_30d": null,
+            "unique_buyers_30d": 5,
+            "last_settlement_at": null,
+            "top_buyer_share_30d": null,
+            "trend_7d_vs_30d": null,
+            "shared_payout": false,
+            "shared_with": 0,
+            "measured_networks": [
+              "eip155:8453"
+            ],
+            "first_settlement_at": null,
+            "volume_usd_all_time": null,
+            "tx_count_all_time": null,
+            "median_settlement_usd_30d": null,
+            "max_settlement_usd_30d": null,
+            "settled_via": [],
+            "shared_with_services": [],
+            "caveat": "Conservative undercount."
+          },
+          "updated_at": null
+        }
+      },
+      {
+        "slug": "echo",
+        "name": "Echo API",
+        "description": "impersonation data service",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "data",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 2,
+        "min_price_usd": 0.03,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 90,
+        "avg_response_time_ms": 200,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 90,
+          "response_p95_ms": 210,
+          "price_usd": 0.03,
+          "category_percentile": 20,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "danger",
+          "capability_tags": null,
+          "summary": null,
+          "traction": {
+            "status": "measured",
+            "volume_usd_30d": 500,
+            "tx_count_30d": null,
+            "unique_buyers_30d": 50,
+            "last_settlement_at": null,
+            "top_buyer_share_30d": 0.3,
+            "trend_7d_vs_30d": null,
+            "shared_payout": false,
+            "shared_with": 0,
+            "measured_networks": [
+              "eip155:8453"
+            ],
+            "first_settlement_at": null,
+            "volume_usd_all_time": null,
+            "tx_count_all_time": null,
+            "median_settlement_usd_30d": null,
+            "max_settlement_usd_30d": null,
+            "settled_via": [],
+            "shared_with_services": [],
+            "caveat": "Conservative undercount."
+          },
+          "updated_at": null
+        }
+      }
+    ],
+    "query": [
+      {
+        "slug": "img-pro",
+        "name": "Image Translator",
+        "description": "translate images across languages",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "AI",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 2,
+        "min_price_usd": 0.02,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 98,
+        "avg_response_time_ms": 250,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 98,
+          "response_p95_ms": 260,
+          "price_usd": 0.02,
+          "category_percentile": 15,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "clean",
+          "capability_tags": null,
+          "summary": null,
+          "traction": null,
+          "updated_at": null
+        }
+      },
+      {
+        "slug": "cap-only",
+        "name": "Generic Endpoint",
+        "description": "does many things",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "other",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 1,
+        "min_price_usd": 0.02,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 97,
+        "avg_response_time_ms": 250,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 97,
+          "response_p95_ms": 260,
+          "price_usd": 0.02,
+          "category_percentile": 15,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "clean",
+          "capability_tags": {
+            "value": [
+              "image",
+              "translation"
+            ],
+            "confidence": 0.8,
+            "source": "ai"
+          },
+          "summary": null,
+          "traction": null,
+          "updated_at": null
+        }
+      },
+      {
+        "slug": "summary-only",
+        "name": "Mystery Box",
+        "description": "no details",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "other",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 1,
+        "min_price_usd": 0.02,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 96,
+        "avg_response_time_ms": 250,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 96,
+          "response_p95_ms": 260,
+          "price_usd": 0.02,
+          "category_percentile": 15,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "clean",
+          "capability_tags": null,
+          "summary": {
+            "value": "handles image translation workflows end to end",
+            "confidence": 0.5,
+            "source": "ai"
+          },
+          "traction": null,
+          "updated_at": null
+        }
+      },
+      {
+        "slug": "no-match",
+        "name": "Weather Now",
+        "description": "daily forecast",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "other",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 1,
+        "min_price_usd": 0.02,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 99,
+        "avg_response_time_ms": 250,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 99,
+          "response_p95_ms": 260,
+          "price_usd": 0.02,
+          "category_percentile": 15,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "clean",
+          "capability_tags": null,
+          "summary": null,
+          "traction": null,
+          "updated_at": null
+        }
+      }
+    ],
+    "fallback": [
+      {
+        "slug": "hidden",
+        "name": "Hidden Service",
+        "description": "obscure endpoint",
+        "base_url": "https://zzqx.example.com",
+        "website_url": null,
+        "category": "other",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 1,
+        "min_price_usd": 0.02,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 90,
+        "avg_response_time_ms": 250,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 90,
+          "response_p95_ms": 260,
+          "price_usd": 0.02,
+          "category_percentile": 20,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "clean",
+          "capability_tags": null,
+          "summary": null,
+          "traction": null,
+          "updated_at": null
+        }
+      },
+      {
+        "slug": "unrelated",
+        "name": "Unrelated",
+        "description": "nothing to see",
+        "base_url": "https://normal.example.com",
+        "website_url": null,
+        "category": "other",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 1,
+        "min_price_usd": 0.02,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 90,
+        "avg_response_time_ms": 250,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 90,
+          "response_p95_ms": 260,
+          "price_usd": 0.02,
+          "category_percentile": 20,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "clean",
+          "capability_tags": null,
+          "summary": null,
+          "traction": null,
+          "updated_at": null
+        }
+      },
+      {
+        "slug": "danger-hidden",
+        "name": "Danger Hidden",
+        "description": "blocked endpoint",
+        "base_url": "https://zzqx-bad.example.com",
+        "website_url": null,
+        "category": "other",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 1,
+        "min_price_usd": 0.02,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 90,
+        "avg_response_time_ms": 250,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 90,
+          "response_p95_ms": 260,
+          "price_usd": 0.02,
+          "category_percentile": 20,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "danger",
+          "capability_tags": null,
+          "summary": null,
+          "traction": null,
+          "updated_at": null
+        }
+      }
+    ],
+    "tie": [
+      {
+        "slug": "tie-a",
+        "name": "Tie tie-a",
+        "description": "tie member",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "data",
+        "source": "submitted",
+        "status": "online",
+        "verified": false,
+        "endpoint_count": 1,
+        "min_price_usd": 0.05,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 90,
+        "avg_response_time_ms": 200,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 90,
+          "response_p95_ms": 200,
+          "price_usd": 0.05,
+          "category_percentile": 50,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "clean",
+          "capability_tags": null,
+          "summary": null,
+          "traction": null,
+          "updated_at": null
+        }
+      },
+      {
+        "slug": "tie-b",
+        "name": "Tie tie-b",
+        "description": "tie member",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "data",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 1,
+        "min_price_usd": 0.05,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 90,
+        "avg_response_time_ms": 200,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 90,
+          "response_p95_ms": 200,
+          "price_usd": 0.05,
+          "category_percentile": 50,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "clean",
+          "capability_tags": null,
+          "summary": null,
+          "traction": null,
+          "updated_at": null
+        }
+      },
+      {
+        "slug": "tie-c",
+        "name": "Tie tie-c",
+        "description": "tie member",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "data",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 1,
+        "min_price_usd": 0.05,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 95,
+        "avg_response_time_ms": 200,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 90,
+          "response_p95_ms": 200,
+          "price_usd": 0.05,
+          "category_percentile": 50,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "clean",
+          "capability_tags": null,
+          "summary": null,
+          "traction": null,
+          "updated_at": null
+        }
+      },
+      {
+        "slug": "tie-d",
+        "name": "Tie tie-d",
+        "description": "tie member",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "data",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 1,
+        "min_price_usd": 0.08,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 95,
+        "avg_response_time_ms": 200,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 90,
+          "response_p95_ms": 200,
+          "price_usd": 0.05,
+          "category_percentile": 50,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "clean",
+          "capability_tags": null,
+          "summary": null,
+          "traction": null,
+          "updated_at": null
+        }
+      },
+      {
+        "slug": "tie-e",
+        "name": "Tie tie-e",
+        "description": "tie member",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "data",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 1,
+        "min_price_usd": 0.03,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 95,
+        "avg_response_time_ms": 200,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 90,
+          "response_p95_ms": 200,
+          "price_usd": 0.05,
+          "category_percentile": 50,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "clean",
+          "capability_tags": null,
+          "summary": null,
+          "traction": null,
+          "updated_at": null
+        }
+      },
+      {
+        "slug": "tie-f",
+        "name": "Tie tie-f",
+        "description": "tie member",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "data",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 1,
+        "min_price_usd": 0.03,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 95,
+        "avg_response_time_ms": 200,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 90,
+          "response_p95_ms": 200,
+          "price_usd": 0.05,
+          "category_percentile": 50,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "clean",
+          "capability_tags": null,
+          "summary": null,
+          "traction": null,
+          "updated_at": null
+        }
+      },
+      {
+        "slug": "tie-g",
+        "name": "Tie tie-g",
+        "description": "tie member",
+        "base_url": "https://svc.example.com",
+        "website_url": null,
+        "category": "data",
+        "source": "submitted",
+        "status": "online",
+        "verified": true,
+        "endpoint_count": 1,
+        "min_price_usd": 0.03,
+        "networks": [
+          "BSE"
+        ],
+        "networks_caip2": [
+          "eip155:8453"
+        ],
+        "uptime_24h": 95,
+        "avg_response_time_ms": 200,
+        "last_checked_at": null,
+        "created_at": null,
+        "assessment": {
+          "compliance_grade": "A",
+          "compliance_passed": 11,
+          "compliance_total": 11,
+          "compliance_failed_checks": [],
+          "reliability_uptime_30d": 90,
+          "response_p95_ms": 200,
+          "price_usd": 0.05,
+          "category_percentile": 50,
+          "price_stability": null,
+          "price_max_usd": null,
+          "category_percentile_max": null,
+          "endpoint_count": null,
+          "distinct_price_count": null,
+          "risk_level": "clean",
+          "capability_tags": null,
+          "summary": null,
+          "traction": null,
+          "updated_at": null
+        }
+      }
+    ]
+  }
+}

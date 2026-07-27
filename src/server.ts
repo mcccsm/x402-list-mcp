@@ -1,4 +1,4 @@
-// Builds a configured McpServer with all 5 tools registered, plus the stdio
+// Builds a configured McpServer with all 6 tools registered, plus the stdio
 // start helper. The HTTP start helper lives in http.ts.
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -6,13 +6,13 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { registerTools } from "./tools.js";
 
 // version: keep in sync with package.json and server.json (and the user-agent in api.ts).
-export const SERVER_INFO = { name: "x402-list-mcp", version: "0.3.0" };
+export const SERVER_INFO = { name: "x402-list-mcp", version: "0.4.0" };
 
 export function buildServer(): McpServer {
   const server = new McpServer(SERVER_INFO, {
     capabilities: { tools: {} },
     instructions:
-      "x402-list is the directory of services that accept x402 payments, with on-chain-verified settlement volume per facilitator. Use search_x402_services to discover, get_service for detail, find_best_service to recommend (ranked mostly on reliability, x402 compliance and price, with a SMALL ~10% weight on measured per-service on-chain traction; a service whose payTo is shared across services has its traction attributed pro-quota - volume and buyers divided by the services sharing the payout - while an unmeasured network or a suppressed member carries no traction term), check_health for status, get_facilitator_volumes for the per-facilitator on-chain settlement metric. On-chain figures are a conservative undercount and all money fields are decimal US dollars.",
+      "x402-list is the directory of services that accept x402 payments, with on-chain-verified settlement volume per facilitator. Use search_x402_services to discover, get_service for detail, find_best_service to recommend (ranked mostly on reliability, x402 compliance and price, with a SMALL ~10% weight on measured per-service on-chain traction; a service whose payTo is shared across services has its traction attributed pro-quota - volume and buyers divided by the services sharing the payout - while an unmeasured network or a suppressed member carries no traction term), check_health for status, get_facilitator_volumes for the per-facilitator on-chain settlement metric, and assess_services for a fresh PAID on-demand AI comparison of a shortlist for a stated need ($0.25 USDC on Base via x402; a pass-through that never holds keys or signs). On-chain figures are a conservative undercount and all money fields are decimal US dollars.",
   });
   registerTools(server);
   return server;

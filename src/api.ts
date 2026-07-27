@@ -11,7 +11,7 @@ const PREFIX = "/api/v1";
 const DEFAULT_TIMEOUT_MS = Number(process.env.X402_LIST_TIMEOUT_MS ?? 15000);
 // version: keep in sync with package.json / server.json / SERVER_INFO in server.ts.
 // Exported so the version-sync test can assert it carries the same version as the others.
-export const USER_AGENT = "x402-list-mcp/0.3.0 (+https://x402-list.com)";
+export const USER_AGENT = "x402-list-mcp/0.4.0 (+https://x402-list.com)";
 
 export interface ApiEnvelope<T> {
   data: T;
@@ -388,6 +388,33 @@ export const getServices = (q: {
   verified?: boolean;
 }) => apiGet<ServiceListItem[]>("/services", q) as Promise<ServicesListResponse>;
 
+// GET /best - the server-side best-service recommender (T1c). find_best_service is a THIN wrapper
+// over this: the two-stage relevance->quality ranking (and the include_facilitator_context merge,
+// decision 27/7) now runs server-side, so the tool forwards params, normalizes the network name,
+// and surfaces the response unchanged - it carries NO scoring. The `data` block is the ranked
+// result; `meta.ranking_version` pins the scoring generation.
+export interface BestData {
+  recommendations: unknown[];
+  ranking_basis: string;
+  excluded_danger: string[];
+  facilitator_context: unknown[] | null;
+  note?: string; // present only when nothing matched the filters
+}
+export interface BestResponse {
+  data: BestData;
+  meta?: { ranking_version?: number };
+}
+export const getBest = (q: {
+  q?: string;
+  category?: string;
+  network?: string;
+  max_price_usd?: number;
+  require_verified?: boolean;
+  prefer?: string;
+  limit?: number;
+  include_facilitator_context?: boolean;
+}) => apiGet<BestData>("/best", q) as Promise<BestResponse>;
+
 export const getService = (slug: string) =>
   apiGet<ServiceDetail>(`/services/${encodeURIComponent(slug)}`);
 
@@ -445,3 +472,67 @@ export interface NetworkItem {
   avg_uptime: number | null;
 }
 export const getNetworks = () => apiGet<NetworkItem[]>("/networks");
+
+// ---- POST /assess (T2 on-demand paid assessment) --------------------------------
+// The MCP `assess_services` tool is a PASS-THROUGH over this paid endpoint: the package holds NO
+// keys, NEVER signs, and NEVER settles. It relays the x402 handshake only:
+//   no PAYMENT-SIGNATURE   -> 402 with the PAYMENT-REQUIRED challenge (base64 header + a JSON
+//                             accepts[] body), returned VERBATIM for the caller to sign;
+//   with PAYMENT-SIGNATURE -> the server verifies/settles and answers 200 with the report body and
+//                             a PAYMENT-RESPONSE settle receipt header.
+export interface AssessPostResult {
+  status: number;
+  body: unknown; // the JSON body verbatim (402 challenge, 200 report, or an error envelope)
+  /** base64 PAYMENT-REQUIRED header on a 402 challenge, else null. */
+  paymentRequiredHeaderB64: string | null;
+  /** base64 PAYMENT-RESPONSE settle receipt on a paid 200, else null. */
+  paymentResponseHeaderB64: string | null;
+}
+
+/**
+ * POST a body to /assess. Unlike apiGet this does NOT throw on a non-2xx status: a 402 is the
+ * expected payment challenge and a 400/503 is a normal control answer the caller must see. Only a
+ * transport failure throws (ApiError status 0). The optional PAYMENT-SIGNATURE header carries the
+ * caller's own client-side signature on the retry; this module never produces or holds it.
+ */
+export async function postAssess(
+  payload: { question: string; services: string[] },
+  paymentSignatureB64?: string,
+  opts?: { timeoutMs?: number },
+): Promise<AssessPostResult> {
+  const url = new URL(BASE + PREFIX + "/assess");
+  const headers: Record<string, string> = {
+    accept: "application/json",
+    "content-type": "application/json",
+    "user-agent": USER_AGENT,
+  };
+  if (paymentSignatureB64) headers["PAYMENT-SIGNATURE"] = paymentSignatureB64;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), opts?.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    throw new ApiError("Network error calling /assess", { cause: e, status: 0 });
+  } finally {
+    clearTimeout(t);
+  }
+  const text = await res.text();
+  let body: unknown = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    body = null; // a non-JSON body is surfaced as null
+  }
+  return {
+    status: res.status,
+    body,
+    paymentRequiredHeaderB64: res.headers.get("PAYMENT-REQUIRED"),
+    paymentResponseHeaderB64: res.headers.get("PAYMENT-RESPONSE"),
+  };
+}

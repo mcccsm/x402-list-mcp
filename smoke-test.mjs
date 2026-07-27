@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Smoke test: spawn the built stdio server via the official MCP SDK Client +
-// StdioClientTransport, initialize, list tools (assert all 5 with valid schemas),
+// StdioClientTransport, initialize, list tools (assert all 6 with valid schemas),
 // and, when X402_LIST_SMOKE_LIVE is set, call get_facilitator_volumes and
 // search_x402_services against the live API asserting non-empty, correctly
 // shaped results with USD values passed through UNSCALED (verified by comparing
@@ -25,6 +25,7 @@ const EXPECTED_TOOLS = [
   "find_best_service",
   "check_health",
   "get_facilitator_volumes",
+  "assess_services",
 ];
 
 const log = (...a) => console.error(...a);
@@ -59,7 +60,7 @@ async function main() {
       `tool '${t.name}' has a valid object inputSchema`,
     );
   }
-  log("PASS: all 5 tools present with valid object input schemas");
+  log("PASS: all 6 tools present with valid object input schemas");
 
   const samples = {};
 

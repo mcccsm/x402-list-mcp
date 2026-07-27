@@ -1,4 +1,4 @@
-// The 5 x402-list MCP tools: schemas, handlers, response mapping.
+// The 6 x402-list MCP tools: schemas, handlers, response mapping.
 //
 // USD PASS-THROUGH RULE: every *_usd field is copied straight from the API value.
 // No Math.round, no multiply, no divide. pricing[].price is copied as the raw
@@ -17,8 +17,9 @@ import {
   getFacilitators,
   getStatus,
   getNetworks,
+  getBest,
+  postAssess,
   type ServiceListItem,
-  type ServiceTraction,
 } from "./api.js";
 import { trackTool } from "./track.js";
 
@@ -81,6 +82,27 @@ function describeError(e: unknown): string {
   if (e instanceof Error) return e.message;
   return String(e);
 }
+
+// Pull a human message out of an API error/control body ({error:{code,message}}, {error, message},
+// or {message}). Used by assess_services to surface a 400/503 answer to the agent.
+function extractApiMessage(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const b = body as Record<string, unknown>;
+  if (typeof b.message === "string" && b.message) return b.message;
+  const err = b.error;
+  if (err && typeof err === "object") {
+    const m = (err as Record<string, unknown>).message;
+    if (typeof m === "string" && m) return m;
+  }
+  if (typeof err === "string" && err) return err;
+  return null;
+}
+
+// ── assess_services copy (user-facing; census in docs/COPY-REVIEW-t1c-t2.md) ──
+const ASSESS_PAYMENT_INSTRUCTION =
+  "Payment required. Sign the single accepts[0] option ($0.25 USDC on Base) client-side with your own x402-capable wallet, then call assess_services again with the same question and services and set payment_signature_b64 to the base64 PAYMENT-SIGNATURE you produced. This server never holds keys and never signs: it only relays the challenge. There is no refund.";
+const ASSESS_SIGNATURE_REJECTED_NOTE =
+  "A payment_signature_b64 was supplied but the server did not settle (the signature did not verify, funds were insufficient, or the quoted price changed). Re-sign the accepts[0] option in this fresh challenge and retry.";
 
 export function registerTools(server: McpServer): void {
   // -------------------------------------------------------------------------
@@ -330,286 +352,39 @@ export function registerTools(server: McpServer): void {
         include_facilitator_context: args.include_facilitator_context,
       });
       try {
+        // Network name/abbreviation -> canonical abbreviation. This is shared input normalization
+        // (search_x402_services uses the same resolver), NOT ranking: the /best route validates the
+        // abbreviation and returns 400 on an unknown one. An unrecognized input is forwarded raw so
+        // the server is the single authority on the answer (decision 27/7: API-first).
         const net = args.network ? await resolveNetwork(args.network) : null;
-        const queryTokens = tokenize(args.q ?? "");
-        const hasQuery = queryTokens.length > 0;
 
-        // Build a candidate pool for a given server-side text query, deduped by slug and
-        // (optionally) widened past the online-only set. Both modes page through the API up to
-        // WIDE_PAGE_CAP (following the API's meta.total_pages) so no candidate is silently dropped
-        // once the directory grows past one page: `wide` pages the WHOLE catalogue (every status)
-        // so relevance ranking sees tag-only and offline matches too; otherwise it pages the
-        // online-first set and only widens to the full catalogue when still too thin for `limit`.
-        // A single page-1 pull silently dropped tail-uptime services on BOTH paths once the
-        // directory grew past one page. require_verified is applied SERVER-SIDE (audit C17): the
-        // pool is verified-scoped at the source, so it stays complete under the page cap instead of
-        // being trimmed after a capped fetch. `verified` is sent only when true (false means "no
-        // filter", not "unverified only").
-        const WIDE_PAGE_CAP = 5; // per_page 100 => up to 500 services, covers the full catalogue with headroom
-        const buildPool = async (
-          serverQ: string | undefined,
-          wide: boolean,
-        ): Promise<ServiceListItem[]> => {
-          const bySlug = new Map<string, ServiceListItem>();
-          // Page through one status slice (status=undefined = every status), merging into bySlug.
-          const pageThrough = async (status: string | undefined): Promise<void> => {
-            const first = await getServices({
-              q: serverQ,
-              category: args.category,
-              network: net?.abbrev,
-              status,
-              sort: "uptime",
-              per_page: 100,
-              page: 1,
-              verified: args.require_verified ? true : undefined,
-            });
-            for (const s of first.data) if (!bySlug.has(s.slug)) bySlug.set(s.slug, s);
-            const totalPages = Math.min(first.meta?.total_pages ?? 1, WIDE_PAGE_CAP);
-            for (let page = 2; page <= totalPages; page++) {
-              const next = await getServices({
-                q: serverQ,
-                category: args.category,
-                network: net?.abbrev,
-                status,
-                sort: "uptime",
-                per_page: 100,
-                page,
-                verified: args.require_verified ? true : undefined,
-              });
-              for (const s of next.data) if (!bySlug.has(s.slug)) bySlug.set(s.slug, s);
-            }
-          };
-          if (wide) {
-            await pageThrough(undefined);
-          } else {
-            await pageThrough("online");
-            // Online set still too thin for `limit`: widen to the full catalogue (all statuses).
-            if (bySlug.size < args.limit) await pageThrough(undefined);
-          }
-          return [...bySlug.values()];
-        };
-
-        // Hard filters, re-asserted client-side (the API silently ignores an unknown network).
-        const applyHardFilters = (list: ServiceListItem[]): ServiceListItem[] => {
-          let p = list;
-          if (net) p = p.filter((s) => s.networks.includes(net.abbrev));
-          if (args.category) p = p.filter((s) => s.category === args.category);
-          if (args.max_price_usd !== undefined) {
-            p = p.filter((s) => s.min_price_usd !== null && s.min_price_usd <= args.max_price_usd!);
-          }
-          // require_verified is enforced server-side in buildPool (SQL-side `verified` param, audit
-          // C17), so it is NOT re-asserted here: unlike an unknown `network` the API honors it
-          // reliably, and filtering after a capped fetch would trim the pool the server already
-          // scoped. It also inherits the derived verified decay (verified AND recently responding).
-          return p;
-        };
-        // Family 8 (risk): a DETERMINISTIC danger flag removes a service from a "recommend
-        // the best" surface entirely. A residual warning stays but is penalized in the
-        // quality score below. danger is never inferred from an LLM, low uptime, or a high
-        // price - only an exact blocklist/impersonation match.
-        const dropDanger = (list: ServiceListItem[]) => ({
-          kept: list.filter((s) => s.assessment?.risk_level !== "danger"),
-          excluded: list.filter((s) => s.assessment?.risk_level === "danger").map((s) => s.slug),
+        // Thin wrapper over GET /api/v1/best: the two-stage relevance->quality ranking now runs
+        // server-side (identical scoring, locked byte-for-byte by the shared best.fixtures.json), and
+        // the include_facilitator_context merge is server-side too (decision 27/7). The package holds
+        // NO scoring logic. `require_verified`/`include_facilitator_context` are sent only when true
+        // (false = no filter, the API default).
+        const resp = await getBest({
+          q: args.q,
+          category: args.category,
+          network: net?.abbrev,
+          max_price_usd: args.max_price_usd,
+          require_verified: args.require_verified ? true : undefined,
+          prefer: args.prefer,
+          limit: args.limit,
+          include_facilitator_context: args.include_facilitator_context ? true : undefined,
         });
 
-        // 1. Candidate pool. With a free-text need we do NOT push `q` to the server: its
-        // ILIKE only spans name/description/category/base_url and cannot see the AI-derived
-        // capability tags/summary, so a service matching only via tags would never enter the
-        // pool. We pull the catalogue and rank by relevance below (stage 1). Without a need
-        // the original online-first server pool is used directly.
-        let filtered = dropDanger(applyHardFilters(await buildPool(undefined, hasQuery)));
-        let pool = filtered.kept;
-        let excludedDanger = filtered.excluded;
-
-        // Relevance floor + substring-`q` fallback (only with a free-text need). Keep only
-        // candidates with at least one grounded token hit (measured text OR a confidence-
-        // weighted capability tag). If that leaves nothing, fall back to the server's
-        // substring-`q` pool so a base_url or phrase match the tokenizer misses is not lost.
-        if (hasQuery) {
-          const relevant = pool.filter((s) => relevanceScore(s, queryTokens) > 0);
-          if (relevant.length > 0) {
-            pool = relevant;
-          } else {
-            filtered = dropDanger(applyHardFilters(await buildPool(args.q, false)));
-            pool = filtered.kept;
-            excludedDanger = filtered.excluded;
-          }
-        }
-
-        const facilitatorContext = args.include_facilitator_context
-          ? await topFacilitatorContext()
-          : null;
-
-        const rankingBasis =
-          "Two stages. (1) RELEVANCE: when a free-text need is given, each candidate is scored on how well your query matches its AI-derived capability tags and summary plus its name/description/category (falls back to plain text match). (2) QUALITY: measured families combined with explicit weights - reliability (live status, uptime, response time), x402 compliance grade, economics (price and in-category price percentile), safety risk, and a SMALL ~10% weight on on-chain traction (per-service settlement volume, transaction count and unique buyers, measured over the service's known payTo via recognized settlers as a conservative undercount). Traction never dominates; a service with a shared payTo has its traction attributed pro-quota (volume and buyers divided by the number of services sharing the payout), and a service on an unmeasured network or a shared member whose probe is failing carries no traction term (the other weights are renormalized). The term also gates on recent settlement: no settlement in the last 30 UTC days scores 0. Each recommendation also carries top_buyer_share_30d (0-1, the 30d volume share of the largest single buyer) as a published concentration signal for the reader only; it is not part of the score. AI-derived fields are labeled {value,confidence,source:'ai'} and NEVER override a measured value.";
-
-        if (pool.length === 0) {
-          return ok({
-            recommendations: [],
-            ranking_basis: rankingBasis,
-            note:
-              net && !net.recognized
-                ? `network '${args.network}' did not match any known network (${await knownNetworksHint()}); no services match it`
-                : "no services match the hard filters",
-            excluded_danger: excludedDanger,
-            facilitator_context: facilitatorContext,
-          });
-        }
-
-        // ── Stage 1: relevance (only when a free-text need is given) ──────────────
-        // The pool was gathered WITHOUT the server `q` (so tag-only matches survive); this
-        // ranks it using the already-computed synthesis capability tags + summary plus the
-        // measured text. No live LLM here (the model key is server-only). A candidate is
-        // never hidden for being unclassifiable.
-        const relevanceOf = (s: ServiceListItem) =>
-          queryTokens.length === 0 ? 1 : relevanceScore(s, queryTokens);
-
-        // ── Stage 2: measured quality sub-scores, anchored to families 1,2,5,8 ────
-        // Family 1 (reliability): status + uptime + response speed. Prefer the assessed
-        // 30d uptime / p95 response when present, else the list's 24h uptime / avg response.
-        const statusScore = (s: ServiceListItem) =>
-          ({ online: 1.0, degraded: 0.5, unknown: 0.25, offline: 0.0 }[s.status]);
-        const uptimeOf = (s: ServiceListItem) => s.assessment?.reliability_uptime_30d ?? s.uptime_24h;
-        const uptimeScore = (s: ServiceListItem) => (uptimeOf(s) ?? 0) / 100;
-        const speedOf = (s: ServiceListItem) => s.assessment?.response_p95_ms ?? s.avg_response_time_ms;
-        const rtVals = pool.map(speedOf).filter((v): v is number => v !== null && v !== undefined);
-        const rtMin = rtVals.length ? Math.min(...rtVals) : 0;
-        const rtMax = rtVals.length ? Math.max(...rtVals) : 1;
-        const speedScore = (s: ServiceListItem) => {
-          const v = speedOf(s);
-          return v === null || v === undefined ? 0.5 : rtMax === rtMin ? 1.0 : 1 - (v - rtMin) / (rtMax - rtMin);
-        };
-        // Internal reliability composition, tilted by `prefer` (explicit weights).
-        const relWeights = {
-          balanced: { status: 0.4, uptime: 0.4, speed: 0.2 },
-          most_reliable: { status: 0.4, uptime: 0.5, speed: 0.1 },
-          cheapest: { status: 0.4, uptime: 0.4, speed: 0.2 },
-          fastest: { status: 0.2, uptime: 0.3, speed: 0.5 },
-        }[args.prefer];
-        const reliabilityScore = (s: ServiceListItem) =>
-          relWeights.status * statusScore(s) + relWeights.uptime * uptimeScore(s) + relWeights.speed * speedScore(s);
-
-        // Family 2 (compliance): continuous x402 conformance pass ratio (module-level
-        // complianceScore below); verified is a weak fallback when the service is unassessed.
-
-        // Family 5 (economics): cheaper price + lower in-category price percentile = better.
-        const priceOf = (s: ServiceListItem) => s.assessment?.price_usd ?? s.min_price_usd;
-        const pVals = pool.map(priceOf).filter((v): v is number => v !== null && v !== undefined);
-        const pMin = pVals.length ? Math.min(...pVals) : 0;
-        const pMax = pVals.length ? Math.max(...pVals) : 1;
-        const priceNorm = (s: ServiceListItem) => {
-          const v = priceOf(s);
-          return v === null || v === undefined ? 0.5 : pMax === pMin ? 1.0 : 1 - (v - pMin) / (pMax - pMin);
-        };
-        const economicsScore = (s: ServiceListItem) => {
-          const pct = s.assessment?.category_percentile;
-          const pctScore = typeof pct === "number" ? 1 - pct / 100 : null;
-          return pctScore === null ? priceNorm(s) : 0.6 * priceNorm(s) + 0.4 * pctScore;
-        };
-
-        // Family 8 (risk): a residual warning is penalized (danger already excluded above).
-        const riskScore = (s: ServiceListItem) => (s.assessment?.risk_level === "warning" ? 0.4 : 1.0);
-
-        // Family 6 (on-chain traction, Fase 2): a SMALL, bounded quality term (module-level
-        // tractionScore below), applied with weight TRACTION_WEIGHT so it can never dominate the four
-        // assessment families. The term is null (excluded, the four family weights renormalized) only
-        // when the status is not 'measured': no payTo, an unmeasured network, or a shared member
-        // whose probe is failing (D-b2 suppression, status 'unresponsive'). Shared-payout members
-        // that ARE measured now enter with their PRO-QUOTA numbers (volume/N, buyers/N, divided
-        // upstream in the API serializer) instead of being exempted, so sharing neither rewards nor
-        // spam-clones a service (D-b5). A 'measured' service with no settlement in the last 30 UTC
-        // days contributes 0 (the D-b4 gate), an honest reflection of no recent on-chain traction.
-        const TRACTION_WEIGHT = 0.1;
-        // The traction term for a service, or null when it is not 'measured' (excluded + renormalized).
-        // Traction is nested at assessment.traction (matching the API), not on the service top level.
-        const tractionTerm = (s: ServiceListItem): number | null => {
-          const t = s.assessment?.traction;
-          if (!t || t.status !== "measured") return null;
-          return tractionScore(t);
-        };
-
-        // Explicit documented quality weights across the four measured families, by `prefer`.
-        const qWeights = {
-          balanced: { reliability: 0.35, compliance: 0.25, economics: 0.2, risk: 0.2 },
-          most_reliable: { reliability: 0.5, compliance: 0.25, economics: 0.05, risk: 0.2 },
-          cheapest: { reliability: 0.2, compliance: 0.15, economics: 0.5, risk: 0.15 },
-          fastest: { reliability: 0.5, compliance: 0.15, economics: 0.15, risk: 0.2 },
-        }[args.prefer];
-
-        const scored = pool.map((s) => {
-          const relevance = relevanceOf(s);
-          const base =
-            qWeights.reliability * reliabilityScore(s) +
-            qWeights.compliance * complianceScore(s) +
-            qWeights.economics * economicsScore(s) +
-            qWeights.risk * riskScore(s);
-          // Traction gets TRACTION_WEIGHT; when the term is null (not 'measured') it is excluded and
-          // the four family weights (already summing to 1) carry the whole score unchanged.
-          const t = tractionTerm(s);
-          const quality = t === null ? base : (1 - TRACTION_WEIGHT) * base + TRACTION_WEIGHT * t;
-          // Relevance gates the ordering only when a query is present (50/50 blend);
-          // otherwise the ranking is pure measured quality.
-          const score = queryTokens.length === 0 ? quality : 0.5 * relevance + 0.5 * quality;
-          return { s, score, relevance, quality };
-        });
-
-        // Deterministic sort: score desc, quality desc, verified desc, uptime desc, price asc, slug asc.
-        scored.sort((a, b) => {
-          if (b.score !== a.score) return b.score - a.score;
-          if (b.quality !== a.quality) return b.quality - a.quality;
-          if (Number(b.s.verified) !== Number(a.s.verified))
-            return Number(b.s.verified) - Number(a.s.verified);
-          const ua = a.s.uptime_24h ?? 0;
-          const ub = b.s.uptime_24h ?? 0;
-          if (ub !== ua) return ub - ua;
-          const pa = a.s.min_price_usd ?? Number.POSITIVE_INFINITY;
-          const pb = b.s.min_price_usd ?? Number.POSITIVE_INFINITY;
-          if (pa !== pb) return pa - pb;
-          return a.s.slug.localeCompare(b.s.slug);
-        });
-
-        const recommendations = scored.slice(0, args.limit).map((entry, i) => {
-          const s = entry.s;
-          return {
-            rank: i + 1,
-            slug: s.slug,
-            name: s.name,
-            category: s.category,
-            status: s.status,
-            verified: s.verified,
-            uptime_24h: s.uptime_24h,
-            avg_response_time_ms: s.avg_response_time_ms,
-            min_price_usd: s.min_price_usd, // decimal USD verbatim (ENTRY / min price)
-            // F2 price-range: the full price picture for tiered services (additive, read-only).
-            price_max_usd: s.assessment?.price_max_usd ?? null, // highest tier; == min_price_usd when flat
-            category_percentile_max: s.assessment?.category_percentile_max ?? null,
-            distinct_price_count: s.assessment?.distinct_price_count ?? null, // 1 = flat, >1 = tiered
-            networks: s.networks,
-            endpoint_count: s.endpoint_count,
-            compliance_grade: s.assessment?.compliance_grade ?? null,
-            // Ids of the x402 conformance checks that failed (pass === false); names the failing
-            // check inline. [] = all pass, null = no compliance graded.
-            compliance_failed_checks: s.assessment?.compliance_failed_checks ?? null,
-            risk_level: s.assessment?.risk_level ?? null,
-            capability_tags: s.assessment?.capability_tags ?? null,
-            // Fase 2 on-chain traction (additive), read from assessment.traction to match the API.
-            // Passed verbatim: null unless status is 'measured'. shared_payout=true => the volume/
-            // buyers are attributed pro-quota (the operator figure divided by the members sharing the
-            // payout). top_buyer_share_30d is PUBLISHED as a concentration signal for the reader; it
-            // is NOT an input to the score (traction weight stays ~10%).
-            ...tractionRecFields(s.assessment?.traction),
-            score: Math.round(entry.score * 100) / 100,
-            relevance: queryTokens.length === 0 ? null : Math.round(entry.relevance * 100) / 100,
-            quality: Math.round(entry.quality * 100) / 100,
-            why: buildWhy(s),
-          };
-        });
-
+        // Surface the server's data block unchanged (recommendations shape is identical to what the
+        // tool used to build client-side), lifting meta.ranking_version so a consumer can pin the
+        // scoring generation. `note` is present only when nothing matched the filters.
+        const d = resp.data;
         return ok({
-          recommendations,
-          ranking_basis: rankingBasis,
-          excluded_danger: excludedDanger,
-          facilitator_context: facilitatorContext,
+          recommendations: d.recommendations,
+          ranking_basis: d.ranking_basis,
+          excluded_danger: d.excluded_danger,
+          facilitator_context: d.facilitator_context,
+          ...(d.note !== undefined ? { note: d.note } : {}),
+          ranking_version: resp.meta?.ranking_version ?? null,
         });
       } catch (e) {
         return fail(`find_best_service failed: ${describeError(e)}`);
@@ -763,112 +538,78 @@ export function registerTools(server: McpServer): void {
       }
     },
   );
-}
 
-// ---- helpers ----
-
-function buildWhy(s: ServiceListItem): string {
-  const parts: string[] = [s.status];
-  if (s.verified) parts.push("verified");
-  if (s.uptime_24h !== null) parts.push(`${s.uptime_24h}% 24h uptime`);
-  if (s.avg_response_time_ms !== null) parts.push(`${s.avg_response_time_ms}ms`);
-  if (s.min_price_usd !== null) parts.push(`$${s.min_price_usd} min price`);
-  const a = s.assessment;
-  if (a?.compliance_grade && a.compliance_grade !== "unknown") parts.push(`compliance ${a.compliance_grade}`);
-  if (a?.risk_level === "warning") parts.push("risk: warning");
-  return parts.join(", ");
-}
-
-// The Fase 2 traction fields surfaced verbatim on each recommendation, read from
-// assessment.traction to match the API. Every field is a passthrough (null unless status is
-// 'measured'). shared_payout=true => the volume/buyers are the operator-level figure attributed
-// pro-quota (divided by the current members sharing the payout). top_buyer_share_30d is PUBLISHED
-// as a concentration signal for the reader; it is NOT part of the ranking score (traction weight
-// stays ~10%). Exported so the recommendation shape is unit-testable without a live server.
-export function tractionRecFields(t: ServiceTraction | null | undefined) {
-  return {
-    traction_status: t?.status ?? null,
-    volume_usd_30d: t?.volume_usd_30d ?? null, // decimal USD, conservative undercount
-    unique_buyers_30d: t?.unique_buyers_30d ?? null,
-    shared_payout: t?.shared_payout ?? null,
-    top_buyer_share_30d: t?.top_buyer_share_30d ?? null, // 0..1 concentration signal, not scored
-  };
-}
-
-// Family 2 (compliance) -> 0..1 quality sub-score. The CONTINUOUS pass ratio (passed/total)
-// rather than a 5-band grade bucket, so ANY failed real check (transport, payTo, price, network)
-// discriminates immediately instead of only a band break; a pool that is uniformly graded A still
-// separates on the underlying ratio. When there is no gradeable compliance (total 0/null) verified
-// is a weak fallback. Exported so the ranking is unit-testable off a fixture.
-export function complianceScore(s: ServiceListItem): number {
-  const a = s.assessment;
-  const total = a?.compliance_total ?? null;
-  const passed = a?.compliance_passed ?? null;
-  if (total !== null && total > 0 && passed !== null) return passed / total;
-  return s.verified ? 0.6 : 0.4;
-}
-
-// Family 6 (on-chain traction) -> 0..1 quality sub-score (D-b4 variant A). A GATE times a weighted
-// mix of volume and buyers: gate = 1 only when there is settlement in the last 30 UTC days
-// (volume_usd_30d > 0, the SAME window as the published 30d figure), else 0. Recency is a threshold
-// you clear, not points you bank for settling $0.01 today. Volume dominates (0.65); buyers saturate
-// at 100 (0.35); both use log saturation so a few large services do not swamp the scale. For a
-// shared-payout member the volume/buyers are already the PRO-QUOTA slice (divided by N upstream in
-// the API serializer), so a diluted number scores lower. clamp01 keeps the whole term bounded 0..1.
-// Exported so the ranking is unit-testable off a fixture.
-const VOLUME_SAT_USD = 1000; // 30d volume at/above this saturates the volume sub-score to 1
-const BUYERS_SAT = 100; // 30d unique buyers at/above this saturates the buyers sub-score to 1
-export function tractionScore(t: ServiceTraction): number {
-  const gate = (t.volume_usd_30d ?? 0) > 0 ? 1 : 0;
-  const vol = Math.max(0, t.volume_usd_30d ?? 0);
-  const volScore = clamp01(Math.log10(1 + vol) / Math.log10(1 + VOLUME_SAT_USD));
-  const buyers = Math.max(0, t.unique_buyers_30d ?? 0);
-  const buyersScore = clamp01(Math.log10(1 + buyers) / Math.log10(1 + BUYERS_SAT));
-  return clamp01(gate * (0.65 * volScore + 0.35 * buyersScore));
-}
-
-// Split a free-text need into distinct lowercase tokens (>= 2 chars).
-function tokenize(q: string): string[] {
-  return [...new Set(q.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length >= 2))];
-}
-
-function clamp01(n: number): number {
-  return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0;
-}
-
-// Relevance of a service to the query tokens, 0..1. Per-token coverage: a hit in the
-// MEASURED text (name/description/category) counts at full weight; a hit only in the
-// AI-derived capability tags or summary counts at that field's confidence, so a
-// 0.9-confidence capability tag ranks far above a 0-confidence one (which contributes
-// nothing) and a measured fact always wins. AI provenance is honored, never faked.
-function relevanceScore(s: ServiceListItem, tokens: string[]): number {
-  if (tokens.length === 0) return 1;
-  const tagField = s.assessment?.capability_tags ?? null;
-  const summaryField = s.assessment?.summary ?? null;
-  const tagConf = clamp01(tagField?.confidence ?? 0);
-  const summaryConf = clamp01(summaryField?.confidence ?? 0);
-  // value can be "unknown" (the marked-field sentinel); only real content matches.
-  const tagVal = tagField?.value;
-  const summaryVal = summaryField?.value;
-  const tagText = (Array.isArray(tagVal) ? tagVal : []).join(" ").toLowerCase();
-  const summaryText = (typeof summaryVal === "string" && summaryVal !== "unknown" ? summaryVal : "").toLowerCase();
-  const measuredText = [s.name, s.description, s.category].join(" ").toLowerCase();
-  let covered = 0;
-  for (const t of tokens) {
-    if (measuredText.includes(t)) covered += 1;
-    else if (tagText.includes(t)) covered += tagConf;
-    else if (summaryText.includes(t)) covered += summaryConf;
-  }
-  return clamp01(covered / tokens.length);
-}
-
-async function topFacilitatorContext() {
-  const resp = await getFacilitators({ timeframe: "7d", per_page: 10, page: 1 });
-  return resp.data.map((f) => ({
-    facilitator_id: f.facilitator_id,
-    name: f.name,
-    volume_usd_7d: f.volume_usd_7d, // decimal USD verbatim
-    tx_count_7d: f.tx_count_7d,
-    verification: f.verification,
-  }));
+  // -------------------------------------------------------------------------
+  // 3.6 assess_services (PAID pass-through; the package holds NO keys and NEVER signs/settles)
+  // -------------------------------------------------------------------------
+  server.registerTool(
+    "assess_services",
+    {
+      description:
+        "Run a fresh, PAID AI assessment comparing a shortlist of already-listed x402 services for a stated need. It charges a one-time $0.25 USDC on Base (x402) for the fresh reasoning only; reading an already-computed assessment stays free via get_service. This tool is a pure pass-through: it never holds keys, never signs, and never settles. Call it once WITHOUT payment_signature_b64 to receive the x402 payment challenge (accepts[], amount, payTo, and a base64 PAYMENT-REQUIRED header) verbatim; sign accepts[0] client-side with your own wallet; then call again with the SAME question and services plus payment_signature_b64 to receive the assessment report and a base64 PAYMENT-RESPONSE settlement receipt. If the fresh run cannot be produced the server answers before settling, so the caller is never charged, and there is no refund. Prices are US dollars.",
+      inputSchema: {
+        question: z
+          .string()
+          .trim()
+          .min(1)
+          .max(1000)
+          .describe("The need to assess the shortlist against (1 to 1000 characters)."),
+        services: z
+          .array(z.string().trim().min(1).max(200))
+          .min(1)
+          .max(8)
+          .describe(
+            "Service slugs to compare for the need (1 to 8; find them with search_x402_services or find_best_service).",
+          ),
+        payment_signature_b64: z
+          .string()
+          .trim()
+          .min(1)
+          .optional()
+          .describe(
+            "Base64 PAYMENT-SIGNATURE for the x402 payment, produced by signing the accepts[0] challenge client-side. Omit on the first call to receive the challenge; set it on the retry to run the paid assessment.",
+          ),
+      },
+    },
+    async (args) => {
+      trackTool("assess_services", {
+        service_count: args.services.length,
+        has_signature: Boolean(args.payment_signature_b64),
+      });
+      try {
+        const result = await postAssess(
+          { question: args.question, services: args.services },
+          args.payment_signature_b64,
+        );
+        if (result.status === 200) {
+          // Paid: return the modular report ({data, meta, provenance}) plus the settle receipt.
+          const body = (result.body ?? {}) as Record<string, unknown>;
+          return ok({
+            status: 200,
+            data: body.data ?? null,
+            meta: body.meta ?? null,
+            provenance: body.provenance ?? null,
+            payment_response_b64: result.paymentResponseHeaderB64,
+          });
+        }
+        if (result.status === 402) {
+          // Return the PaymentRequired challenge VERBATIM (accepts/amount/payTo + the base64 header).
+          // The package does not sign: the caller signs client-side and retries with the signature.
+          return ok({
+            status: 402,
+            payment_required: result.body,
+            payment_required_header_b64: result.paymentRequiredHeaderB64,
+            instruction: ASSESS_PAYMENT_INSTRUCTION,
+            ...(args.payment_signature_b64 ? { note: ASSESS_SIGNATURE_REJECTED_NOTE } : {}),
+          });
+        }
+        // 400 (validation), 503 (dark or an uncharged fail-soft miss), or anything else: surface the
+        // server's message as a tool error.
+        const msg = extractApiMessage(result.body) ?? `assess_services failed: HTTP ${result.status}`;
+        return fail(msg);
+      } catch (e) {
+        return fail(`assess_services failed: ${describeError(e)}`);
+      }
+    },
+  );
 }
