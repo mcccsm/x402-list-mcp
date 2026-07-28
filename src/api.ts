@@ -11,7 +11,7 @@ const PREFIX = "/api/v1";
 const DEFAULT_TIMEOUT_MS = Number(process.env.X402_LIST_TIMEOUT_MS ?? 15000);
 // version: keep in sync with package.json / server.json / SERVER_INFO in server.ts.
 // Exported so the version-sync test can assert it carries the same version as the others.
-export const USER_AGENT = "x402-list-mcp/0.4.1 (+https://x402-list.com)";
+export const USER_AGENT = "x402-list-mcp/0.4.2 (+https://x402-list.com)";
 
 export interface ApiEnvelope<T> {
   data: T;
@@ -386,6 +386,15 @@ export const getServices = (q: {
   q?: string;
   /** true = verified only, false = unverified only, omit = no filter. Filtered SQL-side, so meta.total follows. */
   verified?: boolean;
+  /**
+   * Signability of the last observed 402 envelope (C-compliance). true = no EVM route was seen
+   * missing the EIP-712 domain parameters a standard x402 client needs in order to sign, false =
+   * at least one such route was seen, omit = no filter. Both values are forwarded verbatim (false
+   * is a REAL filter here, unlike `verified` on the tool side, so it must not be dropped); a
+   * service whose latest assessment has not measured that check matches neither and is only
+   * returned when the parameter is omitted. Filtered SQL-side, so meta.total follows.
+   */
+  signable?: boolean;
 }) => apiGet<ServiceListItem[]>("/services", q) as Promise<ServicesListResponse>;
 
 // GET /best - the server-side best-service recommender (T1c). find_best_service is a THIN wrapper

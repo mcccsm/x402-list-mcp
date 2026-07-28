@@ -227,6 +227,65 @@ test("find_best_service: an empty result surfaces the server note", async () => 
   }
 });
 
+// ── search_x402_services: the ?signable= pass-through (C-compliance, 28/7) ─────────
+// The param carries NO client-side logic by decision: whatever the API answers is the answer.
+// What these tests pin is exactly that it reaches the wire, including the `false` value, which a
+// `x ? x : undefined` shorthand (correct for verified_only, wrong here) would silently drop and
+// turn into an unfiltered list reported as filtered.
+
+const SEARCH_ARGS = {
+  q: undefined,
+  category: undefined,
+  network: undefined,
+  status: "all",
+  verified_only: false,
+  sort: "newest",
+  page: 1,
+  per_page: 25,
+};
+
+function servicesBody() {
+  return { data: [], meta: { page: 1, per_page: 25, total: 0, total_pages: 0 } };
+}
+
+test("search_x402_services: signable=true reaches the API and is echoed in filters_applied", async () => {
+  installFetch((url) => (url.pathname.endsWith("/services") ? makeRes(200, servicesBody()) : makeRes(404, {})));
+  try {
+    const res = await TOOLS.search_x402_services({ ...SEARCH_ARGS, signable: true });
+    assert.equal(CALLS.length, 1);
+    assert.ok(CALLS[0].url.pathname.endsWith("/api/v1/services"));
+    assert.equal(CALLS[0].url.searchParams.get("signable"), "true");
+    const applied = res.structuredContent!.filters_applied as Record<string, unknown>;
+    assert.equal(applied.signable, true);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("search_x402_services: signable=false is forwarded, not dropped as a falsy value", async () => {
+  installFetch((url) => (url.pathname.endsWith("/services") ? makeRes(200, servicesBody()) : makeRes(404, {})));
+  try {
+    const res = await TOOLS.search_x402_services({ ...SEARCH_ARGS, signable: false });
+    assert.equal(CALLS[0].url.searchParams.get("signable"), "false");
+    const applied = res.structuredContent!.filters_applied as Record<string, unknown>;
+    assert.equal(applied.signable, false);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test("search_x402_services: omitting signable sends no signable param at all", async () => {
+  installFetch((url) => (url.pathname.endsWith("/services") ? makeRes(200, servicesBody()) : makeRes(404, {})));
+  try {
+    const res = await TOOLS.search_x402_services({ ...SEARCH_ARGS });
+    assert.equal(CALLS[0].url.searchParams.has("signable"), false);
+    const applied = res.structuredContent!.filters_applied as Record<string, unknown>;
+    assert.equal(applied.signable, null);
+  } finally {
+    restoreFetch();
+  }
+});
+
 // ── assess_services (paid pass-through) ────────────────────────────────────────────
 
 const CHALLENGE_402 = {

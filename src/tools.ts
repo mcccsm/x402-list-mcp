@@ -112,7 +112,7 @@ export function registerTools(server: McpServer): void {
     "search_x402_services",
     {
       description:
-        "Search and filter the x402-list directory of services that accept x402 payments. Filter by free-text query, category, network, and live status; sort by newest, uptime, cheapest, or endpoint count. Returns service summaries with price (USD), uptime, status, and verification. Prices are in US dollars.",
+        "Search and filter the x402-list directory of services that accept x402 payments. Filter by free-text query, category, network, live status, and whether the service's last observed 402 envelope can be signed by a standard x402 client; sort by newest, uptime, cheapest, or endpoint count. Returns service summaries with price (USD), uptime, status, and verification. Prices are in US dollars.",
       inputSchema: {
         q: z
           .string()
@@ -147,6 +147,12 @@ export function registerTools(server: McpServer): void {
           .describe(
             "If true, return only verified services. Filtered server-side, so the result total covers the whole verified set, not just this page.",
           ),
+        signable: z
+          .boolean()
+          .optional()
+          .describe(
+            "Filter on the signability of the last observed 402 envelope: true = no EVM route of the service was observed missing the EIP-712 domain parameters (extra.name and extra.version) that a standard x402 client requires in order to sign a payment, false = at least one such route was observed. It describes the payment envelope on the wire, not the merit of the service. A service whose latest assessment has not measured that check yet matches NEITHER value, so omit this parameter to include it. Filtered server-side, so the result total covers the whole filtered set.",
+          ),
         sort: z
           .enum(["newest", "uptime", "cheapest", "endpoints"])
           .default("newest")
@@ -162,6 +168,7 @@ export function registerTools(server: McpServer): void {
         status: args.status,
         sort: args.sort,
         verified_only: args.verified_only,
+        signable: args.signable ?? null,
         has_query: Boolean(args.q),
       });
       try {
@@ -178,6 +185,11 @@ export function registerTools(server: McpServer): void {
           // Server-side filter (audit C17). Only sent when true: verified_only=false
           // means "no filter", not "unverified only".
           verified: args.verified_only ? true : undefined,
+          // Signability filter (C-compliance), pure pass-through: BOTH values are real filters
+          // here, so false is forwarded as-is and only an omitted param means "no filter". No
+          // client-side re-assertion on purpose (decision 28/7): the API is the single authority
+          // on the answer, which is also why this package publishes only after the API ships it.
+          signable: args.signable,
         });
         let services: ServiceListItem[] = resp.data;
         // Re-assert the network filter client-side: the API silently ignores an
@@ -201,6 +213,7 @@ export function registerTools(server: McpServer): void {
             status: args.status,
             sort: args.sort,
             verified_only: args.verified_only,
+            signable: args.signable ?? null,
           },
           note: notes.join(" "),
         });
@@ -289,7 +302,7 @@ export function registerTools(server: McpServer): void {
     "find_best_service",
     {
       description:
-        "Recommend the best x402 service(s) for a need. Ranked mostly on per-service reliability (live status, verification, uptime, response time), x402 compliance, and price (USD), filtered by category and network, with a SMALL (~10%) weight on on-chain traction: settlement volume, transaction count, and unique buyers measured per service over its known payTo addresses via recognized settlers (a conservative undercount, not an estimate). Traction never dominates; a service whose payTo is shared across services has its traction attributed PRO-QUOTA (volume and buyers divided by the number of services sharing the payout), so sharing neither rewards nor spam-clones a service. A service on a network not yet measured, or a shared member whose probe has been failing, carries no traction term (the other weights are renormalized). Traction also requires recent settlement: with no on-chain settlement in the last 30 UTC days the term is 0. Each recommendation also reports top_buyer_share_30d, the 30d volume share of the single largest buyer, as a published concentration signal for the reader; it does not enter the score. Optionally attach ecosystem facilitator-volume context separately.",
+        "Recommend the best x402 service(s) for a need. Ranked mostly on per-service reliability (live status, verification, uptime, response time), x402 compliance (the share of deterministic conformance checks the service passes, capped at 0.6 out of 1, the floor of the C band, when at least one of its EVM routes is missing the EIP-712 domain parameters a standard x402 client needs in order to sign a payment: a fact about the payment envelope, not a judgement on the service), and price (USD), filtered by category and network, with a SMALL (~10%) weight on on-chain traction: settlement volume, transaction count, and unique buyers measured per service over its known payTo addresses via recognized settlers (a conservative undercount, not an estimate). Traction never dominates; a service whose payTo is shared across services has its traction attributed PRO-QUOTA (volume and buyers divided by the number of services sharing the payout), so sharing neither rewards nor spam-clones a service. A service on a network not yet measured, or a shared member whose probe has been failing, carries no traction term (the other weights are renormalized). Traction also requires recent settlement: with no on-chain settlement in the last 30 UTC days the term is 0. Each recommendation also reports top_buyer_share_30d, the 30d volume share of the single largest buyer, as a published concentration signal for the reader; it does not enter the score. The response carries ranking_version, the scoring generation it was produced under, currently 2 because of that compliance cap: scores you stored under generation 1 are not comparable with these. Optionally attach ecosystem facilitator-volume context separately.",
       inputSchema: {
         category: z
           .string()

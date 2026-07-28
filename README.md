@@ -44,11 +44,11 @@ Hosted endpoint: `https://mcp.x402-list.com/mcp`. Health probe: `GET /healthz` r
 
 | Tool | What it does |
 | --- | --- |
-| `search_x402_services` | Search and filter the directory by query, category, network, status; sort by newest/uptime/cheapest/endpoints. |
+| `search_x402_services` | Search and filter the directory by query, category, network, status, and `signable` (whether the last observed 402 envelope carries the EIP-712 domain parameters a standard x402 client needs in order to sign); sort by newest/uptime/cheapest/endpoints. |
 | `get_service` | Full detail for one service by slug: endpoints, per-endpoint USD pricing, uptime windows, networks, settlement asset. |
-| `find_best_service` | Ranked recommendation for a need, computed server-side (GET /api/v1/best). Ranks mostly by reliability, x402 compliance and price (status, verified, uptime, response time, USD price), with a small (~10%) weight on per-service on-chain traction; shared-payout and unmeasured-network services stay neutral. |
+| `find_best_service` | Ranked recommendation for a need, computed server-side (GET /api/v1/best). Ranks mostly by reliability, x402 compliance and price (status, verified, uptime, response time, USD price), with a small (~10%) weight on per-service on-chain traction; shared-payout and unmeasured-network services stay neutral. The compliance term is capped at 0.6 (the floor of the C band) when at least one EVM route is missing the EIP-712 domain parameters a standard x402 client needs in order to sign, which is why `ranking_version` is now 2. |
 | `check_health` | Live status, directory-wide or per service (uptime snapshots, consecutive failures). |
-| `get_facilitator_volumes` | Per-facilitator on-chain-verified settlement volume (24h/7d/30d/all) in USD, tx counts, and an on-chain vs listed flag. |
+| `get_facilitator_volumes` | Per-facilitator on-chain-verified settlement volume (today UTC/7d/30d/all) in USD, tx counts, and an on-chain vs listed flag. The `*_24h` fields cover today (UTC) so far, not a trailing 24-hour window. |
 | `assess_services` | **Paid** ($0.25 USDC on Base, x402). Fresh on-demand AI comparison of a shortlist of listed services for a stated need. Pass-through: it never holds keys, never signs, and never settles. Call without `payment_signature_b64` to get the x402 challenge verbatim, sign it client-side, then retry with the signature to get the report. Optionally add a `probe` target `{ slug, endpoint_path? }` to also test one listed service live: the price becomes $0.25 plus that endpoint price X (non-refundable), and the report gains a `probe_report` block with a verdict and truncated extracts, never the verbatim third-party body. |
 
 ## Units note

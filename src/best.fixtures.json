@@ -1,5 +1,5 @@
 {
-  "ranking_version": 1,
+  "ranking_version": 2,
   "cases": [
     {
       "name": "core balanced no query",
