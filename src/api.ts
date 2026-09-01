@@ -11,7 +11,7 @@ const PREFIX = "/api/v1";
 const DEFAULT_TIMEOUT_MS = Number(process.env.X402_LIST_TIMEOUT_MS ?? 15000);
 // version: keep in sync with package.json / server.json / SERVER_INFO in server.ts.
 // Exported so the version-sync test can assert it carries the same version as the others.
-export const USER_AGENT = "x402-list-mcp/0.4.2 (+https://x402-list.com)";
+export const USER_AGENT = "x402-list-mcp/0.5.1 (+https://x402-list.com)";
 
 export interface ApiEnvelope<T> {
   data: T;
@@ -86,6 +86,20 @@ export interface AiMarkedField<T = string> {
   source: "ai";
 }
 
+/** Staleness of a compliance GRADE (T3 B-24#0 + A-07#1). The grade is a snapshot off the last
+ * captured 402 envelope, not re-derived on every probe, so `updated_at` cannot tell an agent the
+ * host is still reachable or how old the capture is. Two independent machine-keyable signals:
+ *   probe_failing        the up-probe has been failing past the decay window (grade no longer being
+ *                        re-confirmed; may be an unreachable host). Keyed off last_success_at.
+ *   last_success_at      the timestamp probe_failing derives from, distinct from updated_at.
+ *   envelope_captured_at when the 402 envelope the grade was computed from was last captured; can be
+ *                        weeks old while probes still pass. The grade's OWN staleness. */
+export interface ComplianceStaleness {
+  probe_failing: boolean;
+  last_success_at: string | null;
+  envelope_captured_at: string | null;
+}
+
 /** Compact assessment summary carried on each list item (backs ranking). */
 export interface AssessmentSummary {
   compliance_grade: "A" | "B" | "C" | "D" | "F" | "unknown" | null;
@@ -95,6 +109,10 @@ export interface AssessmentSummary {
   // failed check inline without pulling the full detail checklist. [] = all evaluable checks pass;
   // null = no gradeable compliance. Human labels live in the detail assessment.compliance.checks[].
   compliance_failed_checks: string[] | null;
+  // T3 B-24#0 + A-07#1: the grade's freshness, so a LIST consumer filtering on compliance_grade
+  // can tell a grade frozen on a dead host / off a weeks-old capture from a current one. null when
+  // no compliance was graded or the freshness signals were not plumbed. Same block on the detail.
+  compliance_staleness: ComplianceStaleness | null;
   reliability_uptime_30d: number | null; // 0-100
   response_p95_ms: number | null;
   price_usd: number | null; // decimal USD (ENTRY / min price)
@@ -138,6 +156,8 @@ export interface AssessmentDetail {
     checks: { id: string; label: string; pass: boolean | null }[];
     pay_to_source: "payTo" | "payToAddress" | "treasury" | null;
     pay_to_location: "accept" | "element" | null;
+    // T3 B-24#0 + A-07#1: this grade's freshness (nested, mirrors the summary's compliance_staleness).
+    staleness: ComplianceStaleness | null;
   } | null;
   site: {
     homepage: boolean | null;
@@ -374,7 +394,7 @@ export interface StatusResponse {
 // Full-text search param is `q`; pagination is `page` / `per_page`.
 // `verified` IS a real query filter on /services, applied SQL-side by the API: meta.total counts the
 // filtered set, so list_services passes it through instead of filtering the page it got back.
-// (find_best_service still narrows its own scored pool in tools.ts: that is ranking, not this param.)
+// (x402_find_best_service still narrows its own scored pool in tools.ts: that is ranking, not this param.)
 
 export const getServices = (q: {
   page?: number;
@@ -397,7 +417,7 @@ export const getServices = (q: {
   signable?: boolean;
 }) => apiGet<ServiceListItem[]>("/services", q) as Promise<ServicesListResponse>;
 
-// GET /best - the server-side best-service recommender (T1c). find_best_service is a THIN wrapper
+// GET /best - the server-side best-service recommender (T1c). x402_find_best_service is a THIN wrapper
 // over this: the two-stage relevance->quality ranking (and the include_facilitator_context merge,
 // decision 27/7) now runs server-side, so the tool forwards params, normalizes the network name,
 // and surfaces the response unchanged - it carries NO scoring. The `data` block is the ranked
@@ -482,8 +502,53 @@ export interface NetworkItem {
 }
 export const getNetworks = () => apiGet<NetworkItem[]>("/networks");
 
+// ---- GET /changes (T1a drift feed) ----------------------------------------------
+// Every payTo / price / 402-schema change the monitor observed on a listed service, most recent
+// event first. The order is fixed: there is no cursor, no configurable sort, no absolute-date
+// filter and no per-network filter. `days` is clamped server-side to [1,365] (default 90) and
+// `per_page` to [1,100] (default 25).
+//
+// PARAM-NAME TRAP: the per-service filter is called `service`, NOT `slug`. The API ignores an
+// unknown query param instead of rejecting it, so ?slug=exa returns the WHOLE unfiltered feed with
+// no error at all (measured in production 21/8: ?slug=exa = 4425 events, ?service=exa = 579).
+// Renaming this param produces a silently unfiltered answer, never a failure. tools.test.ts pins it.
+export type ChangeEventType = "payto_changed" | "price_changed" | "schema_changed";
+export interface ChangeEvent {
+  slug: string;
+  name: string;
+  type: ChangeEventType;
+  observed_at: string; // ISO 8601 UTC
+  /**
+   * Per-type diff digest; the shape follows `type`:
+   *   payto_changed  { payToAdded: string[], payToRemoved: string[] }  (addresses MASKED by the API)
+   *   price_changed  { priceChanges: [{ network, endpoint, oldPrice, newPrice, assetName }] }
+   *                  oldPrice/newPrice are ATOMIC token amounts (uint256 strings), NOT dollars.
+   *   schema_changed { schemaAdded, schemaRemoved, endpointsAdded, endpointsRemoved: string[] }
+   * Left as `unknown` on purpose: it is passed through verbatim and never rescaled or reshaped.
+   */
+  summary: unknown;
+  /** The service's full accepts array before the change. payTo values are MASKED by the API
+   * (finding B-21#0, deliberate) and `price` inside is an ATOMIC token amount, not dollars. */
+  old_snapshot: unknown;
+  /** Same shape as old_snapshot, after the change. */
+  new_snapshot: unknown;
+}
+export interface ChangesResponse {
+  data: ChangeEvent[];
+  // total = events matching the filter over the whole window, NOT the length of this page.
+  meta: { total: number; page: number; per_page: number; total_pages: number; days: number };
+}
+export const getChanges = (q: {
+  /** Service slug. The wire name is `service`; sending `slug` is silently ignored by the API. */
+  service?: string;
+  type?: ChangeEventType;
+  days?: number;
+  page?: number;
+  per_page?: number;
+}) => apiGet<ChangeEvent[]>("/changes", q) as Promise<ChangesResponse>;
+
 // ---- POST /assess (T2 on-demand paid assessment) --------------------------------
-// The MCP `assess_services` tool is a PASS-THROUGH over this paid endpoint: the package holds NO
+// The MCP `x402_assess_services` tool is a PASS-THROUGH over this paid endpoint: the package holds NO
 // keys, NEVER signs, and NEVER settles. It relays the x402 handshake only:
 //   no PAYMENT-SIGNATURE   -> 402 with the PAYMENT-REQUIRED challenge (base64 header + a JSON
 //                             accepts[] body), returned VERBATIM for the caller to sign;

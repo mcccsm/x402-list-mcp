@@ -1,15 +1,18 @@
 // Streamable HTTP transport server (hosted mode), built on Node's native http.
 // One McpServer instance per MCP session, per the MCP spec. The SDK transport
 // does the protocol work (POST messages, GET SSE stream, DELETE terminate); this
-// wrapper only handles routing, CORS, the /healthz probe, and the session map.
+// wrapper only handles routing, CORS, the /healthz probe, and the session registry
+// (bounded: idle TTL + LRU cap, see sessions.ts).
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { buildServer } from "./server.js";
+import { SessionRegistry } from "./sessions.js";
 
 const MAX_BODY_BYTES = 1024 * 1024; // ~1 MB
+const SWEEP_INTERVAL_MS = 60_000;
 
 const ALLOWED_ORIGINS = (process.env.MCP_ALLOWED_ORIGINS ?? "")
   .split(",")
@@ -78,7 +81,9 @@ function jsonRpcError(res: ServerResponse, status: number, message: string): voi
 }
 
 export async function startHttp(port: number): Promise<void> {
-  const transports = new Map<string, StreamableHTTPServerTransport>();
+  const transports = new SessionRegistry<StreamableHTTPServerTransport>();
+  // unref: the sweeper must never be the reason the process stays up.
+  setInterval(() => transports.sweep(), SWEEP_INTERVAL_MS).unref();
 
   const httpServer = createServer((req, res) => {
     void handle(req, res).catch((e) => {
@@ -126,38 +131,40 @@ export async function startHttp(port: number): Promise<void> {
         return;
       }
 
-      let transport: StreamableHTTPServerTransport | undefined;
-      if (sid && transports.has(sid)) {
-        transport = transports.get(sid);
-      } else if (!sid && isInitializeRequest(body)) {
-        transport = new StreamableHTTPServerTransport({
+      // get() also refreshes the session's idle clock.
+      let transport = sid ? transports.get(sid) : undefined;
+      if (!transport) {
+        if (sid || !isInitializeRequest(body)) {
+          jsonRpcError(res, 400, "No valid session. Send an initialize request first.");
+          return;
+        }
+        const created: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
           onsessioninitialized: (id: string) => {
-            transports.set(id, transport!);
+            transports.set(id, created);
           },
           ...(ALLOWED_HOSTS.length > 0
             ? { enableDnsRebindingProtection: true, allowedHosts: ALLOWED_HOSTS }
             : {}),
         });
-        transport.onclose = () => {
-          if (transport!.sessionId) transports.delete(transport!.sessionId);
+        created.onclose = () => {
+          if (created.sessionId) transports.delete(created.sessionId);
         };
-        await buildServer().connect(transport);
-      } else {
-        jsonRpcError(res, 400, "No valid session. Send an initialize request first.");
-        return;
+        await buildServer().connect(created);
+        transport = created;
       }
 
-      await transport!.handleRequest(req, res, body);
+      await transport.handleRequest(req, res, body);
       return;
     }
 
     if (req.method === "GET" || req.method === "DELETE") {
-      if (!sid || !transports.has(sid)) {
+      const transport = sid ? transports.get(sid) : undefined;
+      if (!transport) {
         jsonRpcError(res, 400, "No valid session.");
         return;
       }
-      await transports.get(sid)!.handleRequest(req, res);
+      await transport.handleRequest(req, res);
       return;
     }
 

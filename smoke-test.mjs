@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Smoke test: spawn the built stdio server via the official MCP SDK Client +
-// StdioClientTransport, initialize, list tools (assert all 6 with valid schemas),
-// and, when X402_LIST_SMOKE_LIVE is set, call get_facilitator_volumes and
-// search_x402_services against the live API asserting non-empty, correctly
+// StdioClientTransport, initialize, list tools (assert all 7 with valid schemas),
+// and, when X402_LIST_SMOKE_LIVE is set, call x402_facilitator_volumes and
+// x402_search_services against the live API asserting non-empty, correctly
 // shaped results with USD values passed through UNSCALED (verified by comparing
 // the tool output to a direct fetch of the same endpoint).
 //
@@ -20,12 +20,13 @@ const BASE = (process.env.X402_LIST_BASE_URL ?? "https://x402-list.com").replace
 const LIVE = !!process.env.X402_LIST_SMOKE_LIVE && process.env.X402_LIST_SMOKE_LIVE !== "0";
 
 const EXPECTED_TOOLS = [
-  "search_x402_services",
-  "get_service",
-  "find_best_service",
-  "check_health",
-  "get_facilitator_volumes",
-  "assess_services",
+  "x402_search_services",
+  "x402_get_service",
+  "x402_find_best_service",
+  "x402_check_health",
+  "x402_facilitator_volumes",
+  "x402_assess_services",
+  "x402_change_events",
 ];
 
 const log = (...a) => console.error(...a);
@@ -60,19 +61,19 @@ async function main() {
       `tool '${t.name}' has a valid object inputSchema`,
     );
   }
-  log("PASS: all 6 tools present with valid object input schemas");
+  log(`PASS: all ${EXPECTED_TOOLS.length} tools present with valid object input schemas`);
 
   const samples = {};
 
   if (LIVE) {
     log(`live mode ON, base ${BASE}`);
 
-    // ---- get_facilitator_volumes (live) ----
+    // ---- x402_facilitator_volumes (live) ----
     const fvRes = await client.callTool({
-      name: "get_facilitator_volumes",
+      name: "x402_facilitator_volumes",
       arguments: { timeframe: "7d", per_page: 25 },
     });
-    assert(!fvRes.isError, "get_facilitator_volumes did not error");
+    assert(!fvRes.isError, "x402_facilitator_volumes did not error");
     const fv = fvRes.structuredContent;
     assert(fv && Array.isArray(fv.facilitators) && fv.facilitators.length > 0, "facilitators non-empty");
     const f0 = fv.facilitators[0];
@@ -97,9 +98,9 @@ async function main() {
       `volume_usd_7d passed through unscaled (tool ${f0.volume_usd_7d} === api ${rawF0.volume_usd_7d})`,
     );
     log(
-      `PASS: get_facilitator_volumes -> ${fv.facilitators.length} facilitators; top ${f0.facilitator_id} volume_usd_all=$${f0.volume_usd_all} (== live API), verification=${f0.verification}`,
+      `PASS: x402_facilitator_volumes -> ${fv.facilitators.length} facilitators; top ${f0.facilitator_id} volume_usd_all=$${f0.volume_usd_all} (== live API), verification=${f0.verification}`,
     );
-    samples.get_facilitator_volumes = {
+    samples.x402_facilitator_volumes = {
       count: fv.facilitators.length,
       top: {
         facilitator_id: f0.facilitator_id,
@@ -114,12 +115,12 @@ async function main() {
       units: fv.units,
     };
 
-    // ---- search_x402_services (live) ----
+    // ---- x402_search_services (live) ----
     const sRes = await client.callTool({
-      name: "search_x402_services",
+      name: "x402_search_services",
       arguments: { per_page: 5, sort: "newest" },
     });
-    assert(!sRes.isError, "search_x402_services did not error");
+    assert(!sRes.isError, "x402_search_services did not error");
     const sc = sRes.structuredContent;
     assert(sc && Array.isArray(sc.services) && sc.services.length > 0, "services non-empty");
     assert(sc.meta && typeof sc.meta.total === "number" && sc.meta.total > 0, "meta.total > 0");
@@ -143,9 +144,9 @@ async function main() {
       `min_price_usd passed through unscaled (tool ${svc0.min_price_usd} === api ${rawSvc0.min_price_usd})`,
     );
     log(
-      `PASS: search_x402_services -> ${sc.services.length} of ${sc.meta.total}; first '${svc0.slug}' min_price_usd=${svc0.min_price_usd} (== live API)`,
+      `PASS: x402_search_services -> ${sc.services.length} of ${sc.meta.total}; first '${svc0.slug}' min_price_usd=${svc0.min_price_usd} (== live API)`,
     );
-    samples.search_x402_services = {
+    samples.x402_search_services = {
       returned: sc.services.length,
       total: sc.meta.total,
       first: {
