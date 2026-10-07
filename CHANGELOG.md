@@ -3,6 +3,19 @@
 All notable changes to `x402-list-mcp` are recorded here. This project follows semantic
 versioning: while the major version is 0, a minor bump may carry a breaking change.
 
+## 0.5.2 - 2026-10-07
+
+### Fixed: catalog descriptions
+
+Removed fixed catalog counts from the server instructions and the search and health tool descriptions.
+
+### Documentation and package metadata
+
+- Added hosted and local Claude Code installation commands, a Cursor install link and remote configuration, and VS Code and Codex connection examples.
+- Linked the public source repository and Glama badge, and made ranking guidance refer to the returned `ranking_version`.
+- Moved the 0.4.x upgrade notice below, alongside the 0.5.0 breaking-change details.
+- Added npm keywords: `directory`, `discovery`, `trust`, `uptime`, `agent`.
+
 ## 0.5.1 - 2026-09-01
 
 ### Added: tool titles and annotations
@@ -12,6 +25,12 @@ tools carry `readOnlyHint: true`; the paid `x402_assess_services` carries `readO
 Nothing else changed: same names, same parameters, same response shapes, same semantics.
 
 ## 0.5.0 - 2026-08-21
+
+> **Upgrading from 0.4.x? Every tool was renamed.** 0.5.0 moved all of them into the `x402_*` namespace
+> and removed the old names, with no compatibility aliases: a `tools/call` for `get_service` or
+> `search_x402_services` now comes back as a JSON-RPC `-32602` "Tool not found", and the old names are
+> absent from `tools/list` too. The old-to-new table and the upgrade checklist (prompts, client
+> allow lists, eval fixtures) are below.
 
 ### BREAKING: every tool was renamed into the `x402_*` namespace
 

@@ -1,40 +1,119 @@
 # x402-list-mcp
 
-MCP server for x402-list: discover x402 payment services and on-chain-verified facilitator settlement volume.
+[![Glama MCP server](https://glama.ai/mcp/servers/mcccsm/x402-list-mcp/badges/score.svg)](https://glama.ai/mcp/servers/mcccsm/x402-list-mcp)
 
-> **Upgrading from 0.4.x? Every tool was renamed.** 0.5.0 moved all of them into the `x402_*` namespace
-> and removed the old names, with no compatibility aliases: a `tools/call` for `get_service` or
-> `search_x402_services` now comes back as a JSON-RPC `-32602` "Tool not found", and the old names are
-> absent from `tools/list` too. The old-to-new table and the upgrade checklist (prompts, client
-> allow lists, eval fixtures) are in [CHANGELOG.md](./CHANGELOG.md).
+Discover x402 payment APIs, check uptime and pricing, and inspect on-chain-verified settlement volume per facilitator through MCP.
 
 ## What is x402-list
 
-[x402-list](https://x402-list.com) is the directory of services that accept x402 (HTTP 402 stablecoin) payments. Its distinctive, defensible data is **on-chain-verified settlement volume per facilitator**, not self-reported numbers. Listed services are continuously health-monitored (uptime, response time, status).
+[x402-list](https://x402-list.com) is a directory of services that accept x402 (HTTP 402 stablecoin) payments. It monitors listed services for uptime, response time and status, and measures facilitator settlement volume on-chain.
 
 This package is a **thin wrapper** over the public x402-list HTTP JSON API. It holds no keys, touches no database, and makes no writes to the directory. It exposes the directory to AI agents through the Model Context Protocol as seven tools: six are free and read-only, and the seventh, `x402_assess_services`, is the only paid one, a pass-through that relays an x402 payment challenge you sign yourself client-side (the package never holds keys, never signs, and never settles).
 
 ## Install and quick start
 
-### stdio (local MCP clients)
+Connect to the hosted server at `https://mcp.x402-list.com/mcp` using Streamable HTTP, or run the npm package locally over stdio. Local use requires Node.js 20 or newer and npm; the hosted connection needs no local Node.js installation.
 
+### Claude Code
+
+Connect to the hosted server:
+
+```sh
+claude mcp add --transport http x402-list https://mcp.x402-list.com/mcp
 ```
+
+Or use the local package instead:
+
+```sh
+claude mcp add --transport stdio x402-list -- npx -y x402-list-mcp
+```
+
+Choose one transport. See the [Claude Code MCP documentation](https://code.claude.com/docs/en/mcp) for configuration scopes.
+
+### Cursor
+
+[Add the hosted server to Cursor](https://cursor.com/link/mcp/install?name=x402-list&config=eyJ1cmwiOiJodHRwczovL21jcC54NDAyLWxpc3QuY29tL21jcCJ9), then confirm the installation in Cursor.
+
+The install link encodes the same configuration as this manual entry in `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global):
+
+```json
+{
+  "mcpServers": {
+    "x402-list": {
+      "url": "https://mcp.x402-list.com/mcp"
+    }
+  }
+}
+```
+
+See the [Cursor MCP documentation](https://cursor.com/docs/mcp) and [install-link format](https://cursor.com/docs/mcp/install-links).
+
+### VS Code
+
+Add this entry to `.vscode/mcp.json` in your project, then start the server from the editor and use it in Copilot agent mode:
+
+```json
+{
+  "servers": {
+    "x402-list": {
+      "type": "http",
+      "url": "https://mcp.x402-list.com/mcp"
+    }
+  }
+}
+```
+
+See the [VS Code MCP documentation](https://code.visualstudio.com/docs/agent-customization/mcp-servers) for other configuration locations.
+
+### Codex
+
+Add the hosted server with the Codex CLI:
+
+```sh
+codex mcp add x402-list --url https://mcp.x402-list.com/mcp
+```
+
+Or add this entry to `~/.codex/config.toml`; the CLI and IDE extension share this configuration:
+
+```toml
+[mcp_servers.x402-list]
+url = "https://mcp.x402-list.com/mcp"
+```
+
+See the [Codex MCP documentation](https://developers.openai.com/codex/mcp).
+
+### Claude Desktop and other local stdio clients
+
+Add this entry to `claude_desktop_config.json`, or the equivalent configuration for your stdio client, and restart the client:
+
+```json
+{
+  "mcpServers": {
+    "x402-list": {
+      "command": "npx",
+      "args": ["-y", "x402-list-mcp"]
+    }
+  }
+}
+```
+
+See the [local MCP connection guide](https://modelcontextprotocol.io/docs/develop/connect-local-servers) for the Claude Desktop configuration file location.
+
+The client launches the same command you can run in a terminal:
+
+```sh
 npx -y x402-list-mcp
 ```
 
-Claude Desktop / generic MCP client config:
+### Self-host Streamable HTTP
 
-```json
-{ "mcpServers": { "x402-list": { "command": "npx", "args": ["-y", "x402-list-mcp"] } } }
-```
+To run your own HTTP instance in a POSIX shell:
 
-### Hosted HTTP (Streamable HTTP transport)
-
-```
+```sh
 MCP_HTTP_PORT=3000 npx -y x402-list-mcp --http
 ```
 
-Hosted endpoint: `https://mcp.x402-list.com/mcp`. Health probe: `GET /healthz` returns `{"status":"ok"}`.
+Connect your client to `http://localhost:3000/mcp`. The health probe at `http://localhost:3000/healthz` returns `{"status":"ok"}`.
 
 ## Environment variables
 
@@ -52,7 +131,7 @@ Hosted endpoint: `https://mcp.x402-list.com/mcp`. Health probe: `GET /healthz` r
 | --- | --- |
 | `x402_search_services` | Search and filter the directory by query, category, network, status, and `signable` (whether the last observed 402 envelope carries the EIP-712 domain parameters a standard x402 client needs in order to sign); sort by newest/uptime/cheapest/endpoints. |
 | `x402_get_service` | Full detail for one service by slug: endpoints, per-endpoint USD pricing, uptime windows, networks, settlement asset. |
-| `x402_find_best_service` | Ranked recommendation for a need, computed server-side (GET /api/v1/best). Ranks mostly by reliability, x402 compliance and price (status, verified, uptime, response time, USD price), with a small (~10%) weight on per-service on-chain traction that can never dominate those three. The answer carries `ranking_version`, **3** today (see below), and a `units` map holding every scoring caveat in full. |
+| `x402_find_best_service` | Ranked recommendation for a need, computed server-side (GET /api/v1/best). Ranks mostly by reliability, x402 compliance and price (status, verified, uptime, response time, USD price), with a small (~10%) weight on per-service on-chain traction that can never dominate those three. Read the answer's `ranking_version` to identify its scoring generation (see below), and its `units` map for scoring caveats. |
 | `x402_check_health` | Live status, directory-wide or per service (uptime snapshots, consecutive failures). |
 | `x402_facilitator_volumes` | Per-facilitator on-chain-verified settlement volume (today UTC/7d/30d/all) in USD, tx counts, and an on-chain vs listed flag. The `*_24h` fields cover today (UTC) so far, not a trailing 24-hour window. |
 | `x402_change_events` | Free, read-only feed of what the monitor observed changing on listed services, most recent first, in exactly three event types (`payto_changed`, `price_changed`, `schema_changed`). Filter by `service` (the listing slug: the parameter is named `service`, not `slug`), by `type`, and by `days` (1 to 365, default 90); page with `page` / `per_page` (up to 100 per page). Each event carries the observation timestamp, a diff summary, and the before/after 402 snapshots. Prices inside an event are atomic token amounts, never dollars, and every payout address is returned masked by the API: the feed reports THAT the payTo changed, never the address. |
@@ -60,8 +139,8 @@ Hosted endpoint: `https://mcp.x402-list.com/mcp`. Health probe: `GET /healthz` r
 
 ## Ranking generations
 
-`x402_find_best_service` returns the scoring generation it was produced under. **Today it is 3.** Scores you
-stored under an earlier generation are not comparable with these, because the math moved:
+`x402_find_best_service` returns its scoring generation in `ranking_version`. Compare scores only
+within the same generation. The changes below explain why scores across generations differ:
 
 - **Generation 2** capped the compliance term at 0.6, the floor of the C band, when at least one of a
   service's EVM routes was observed missing the EIP-712 domain parameters (`extra.name`, `extra.version`)
@@ -85,7 +164,7 @@ Two different on-chain volume signals; do not conflate them. **Facilitator volum
 
 ## Source
 
-The source code is not public yet. This package is a thin read-only wrapper over the public x402-list REST API, documented at https://x402-list.com/api.
+Source code: [mcccsm/x402-list-mcp](https://github.com/mcccsm/x402-list-mcp). This repository mirrors the MCP package when it is published. The public REST API is documented at [x402-list.com/api](https://x402-list.com/api).
 
 ## License
 

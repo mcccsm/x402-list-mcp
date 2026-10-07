@@ -11,7 +11,7 @@ const PREFIX = "/api/v1";
 const DEFAULT_TIMEOUT_MS = Number(process.env.X402_LIST_TIMEOUT_MS ?? 15000);
 // version: keep in sync with package.json / server.json / SERVER_INFO in server.ts.
 // Exported so the version-sync test can assert it carries the same version as the others.
-export const USER_AGENT = "x402-list-mcp/0.5.1 (+https://x402-list.com)";
+export const USER_AGENT = "x402-list-mcp/0.5.2 (+https://x402-list.com)";
 
 export interface ApiEnvelope<T> {
   data: T;

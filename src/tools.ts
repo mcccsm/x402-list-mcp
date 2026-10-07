@@ -182,7 +182,7 @@ export function registerTools(server: McpServer): void {
     {
       title: "Search x402 services",
       description:
-        "Your first call when you do not know which x402 service exists for a job: it narrows a directory of 500+ listed services to candidates. Filter by free-text query, category, network, live status, and whether the last observed 402 envelope is signable by a standard x402 client; sort by newest, uptime, cheapest, or endpoints. Returns up to 100 compact summaries a page: price in decimal USD, uptime, status, verification. Then x402_get_service for the full record.",
+        "Your first call when you do not know which x402 service exists for a job: it narrows the directory of listed services to candidates. Filter by free-text query, category, network, live status, and whether the last observed 402 envelope is signable by a standard x402 client; sort by newest, uptime, cheapest, or endpoints. Returns up to 100 compact summaries a page: price in decimal USD, uptime, status, verification. Then x402_get_service for the full record.",
       // B-14#1: inputSchema is a STRICT object, so an unknown top-level key (e.g. 'networks' for
       // 'network') is rejected with a JSON-RPC -32602 instead of being silently dropped and the
       // query answered as if the filter were honored. The advertised additionalProperties:false is
@@ -567,7 +567,7 @@ export function registerTools(server: McpServer): void {
     {
       title: "Check x402 service health",
       description:
-        "Call this before you send a payment, or right after a call unexpectedly failed: is this service up right now. With no slug, the directory snapshot: five status counts across 500+ services (include_services=true attaches every row). With a slug: that service's status, its 24h/7d/30d/90d uptime windows, response time, consecutive failures, daily snapshots. No money fields.",
+        "Call this before you send a payment, or right after a call unexpectedly failed: is this service up right now. With no slug, the directory snapshot: five status counts across the directory (include_services=true attaches every row). With a slug: that service's status, its 24h/7d/30d/90d uptime windows, response time, consecutive failures, daily snapshots. No money fields.",
       // B-14#1: STRICT object - an unknown top-level key is rejected (-32602), not silently dropped.
       inputSchema: z.object({
         slug: z

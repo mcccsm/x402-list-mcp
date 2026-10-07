@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "com.x402-list/x402-list-mcp",
   "description": "Find and vet x402 payment APIs before your agent pays one: uptime, price, on-chain volume.",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "websiteUrl": "https://x402-list.com",
   "repository": {
     "url": "https://github.com/mcccsm/x402-list-mcp",
@@ -13,7 +13,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "x402-list-mcp",
-      "version": "0.5.1",
+      "version": "0.5.2",
       "transport": {
         "type": "stdio"
       },
