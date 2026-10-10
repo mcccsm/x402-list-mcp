@@ -11,7 +11,7 @@ const PREFIX = "/api/v1";
 const DEFAULT_TIMEOUT_MS = Number(process.env.X402_LIST_TIMEOUT_MS ?? 15000);
 // version: keep in sync with package.json / server.json / SERVER_INFO in server.ts.
 // Exported so the version-sync test can assert it carries the same version as the others.
-export const USER_AGENT = "x402-list-mcp/0.5.2 (+https://x402-list.com)";
+export const USER_AGENT = "x402-list-mcp/0.5.3 (+https://x402-list.com)";
 
 export interface ApiEnvelope<T> {
   data: T;
@@ -216,20 +216,23 @@ export interface AssessmentDetail {
  *   - status 'unresponsive'      -> a shared-payout member whose probe has been failing past the
  *                                   decay window; its share of the shared address is suppressed
  *                                   (metrics null), not attributed to it while it is down.
- * shared_payout=true means the payTo is shared across more than one service; volume_usd_30d,
- * tx_count_30d and unique_buyers_30d are then attributed PRO-QUOTA (the operator-level figure
+ * shared_payout=true means the payTo is shared across more than one service; volume_usd_30d
+ * is then attributed PRO-QUOTA (the operator-level figure
  * divided by the N current members sharing the payout) - a declared convention, not an individually
  * observed measure. The ratios top_buyer_share_30d and trend_7d_vs_30d are left whole (invariant
- * under the division), and unique_buyers_30d can be fractional. */
+ * under the division). tx_count_30d and unique_buyers_30d stay whole operator-level counts
+ * (apply pro_quota_share for the slice), never fractional. */
 export interface ServiceTraction {
   status: "measured" | "no-payto" | "unmeasured-network" | "unresponsive";
-  volume_usd_30d: number | null; // decimal USD settled on-chain over 30 UTC days; shared => pro-quota (/N)
-  tx_count_30d: number | null; // settlement count over 30 UTC days; shared => pro-quota (/N)
-  unique_buyers_30d: number | null; // distinct payers over 30 UTC days; shared => pro-quota (/N), may be fractional
+  volume_usd_30d: number | null; // decimal USD settled on-chain over a rolling 30-day window; shared => pro-quota (/N)
+  tx_count_30d: number | null; // settlement count over a rolling 30-day window; shared => whole operator-level count (apply pro_quota_share for the slice)
+  unique_buyers_30d: number | null; // distinct payers over a rolling 30-day window; shared => whole operator-level count (apply pro_quota_share for the slice)
   last_settlement_at: string | null; // ISO 8601 of the most recent settlement, over all history
   top_buyer_share_30d: number | null; // 0..1, volume share of the single largest buyer over 30d (a ratio, not divided)
+  top_3_buyers_share_30d: number | null; // 0..1, volume share of the 3 largest buyers over 30d (a ratio, not divided)
+  concentrated_volume: boolean | null; // Concentrated volume label: top 3 share >= 0.9, 30d volume >= $10, >= 50 settlements; false when measured and the rule is not met; null when not measured or when the top 3 share is not available yet and the volume and settlement minimums are met
   trend_7d_vs_30d: number | null; // ratio of the last-7d daily rate vs the 30d daily rate (not divided)
-  shared_payout: boolean; // payTo shared across services => volume/buyers attributed pro-quota (/N)
+  shared_payout: boolean; // payTo shared across services => volume attributed pro-quota (/N), counts stay whole
   shared_with: number; // count of OTHER services sharing the payTo (0 when not shared); N = shared_with + 1
   measured_networks: string[]; // canonical CAIP-2 networks that contributed a measurement
   // TRENO A additive (mirror of the root serializer). Always emitted by the API; null/[] when the

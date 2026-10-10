@@ -3,6 +3,15 @@
 All notable changes to `x402-list-mcp` are recorded here. This project follows semantic
 versioning: while the major version is 0, a minor bump may carry a breaking change.
 
+## 0.5.3 - 2026-10-10
+
+### Changed: service traction fields
+
+- `x402_get_service` field notes describe `volume_usd_30d` as a rolling 30-day window ending when the snapshot was computed, not 30 UTC days.
+- `assessment.traction` now carries `top_3_buyers_share_30d` and `concentrated_volume`, passed through from the API and described in the field notes.
+- `x402_get_service` notes explain that `concentrated_volume` can be null on a measured snapshot when the top 3 share is not available yet and the volume and settlement minimums are met.
+- `x402_find_best_service` notes describe the rolling 30-day traction window and the linear top-buyer discount with no threshold.
+
 ## 0.5.2 - 2026-10-07
 
 ### Fixed: catalog descriptions

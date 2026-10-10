@@ -1,6 +1,6 @@
 {
   "name": "x402-list-mcp",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "mcpName": "com.x402-list/x402-list-mcp",
   "description": "Find and vet x402 payment APIs before your agent pays one. Seven tools over the public x402-list directory: search and rank listed services, live uptime and health windows, per-endpoint USD pricing, on-chain-verified facilitator settlement volume, tracked price/payout/schema changes, and paid on-demand assessments (x402 pass-through: never holds keys, never signs, never settles). Thin wrapper over the public x402-list API.",
   "license": "MIT",

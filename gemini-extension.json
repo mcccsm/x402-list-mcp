@@ -1,6 +1,6 @@
 {
   "name": "x402-list",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Discover and vet x402 payment services before your agent pays one: uptime, price, and on-chain-verified settlement volume, from Gemini CLI.",
   "mcpServers": {
     "x402-list": {
